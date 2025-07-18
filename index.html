@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Registro de  Comandas</title>
+  <title>Registro de Comandas</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
@@ -36,13 +36,20 @@
       font-size: 16px;
       border: none;
       border-radius: 6px;
-      background: #2196F3;
       color: white;
       cursor: pointer;
     }
 
+    .btn-primary {
+      background-color: #2196F3;
+    }
+
     .btn-danger {
       background-color: #f44336;
+    }
+
+    .btn-warning {
+      background-color: #FF9800;
     }
 
     table {
@@ -73,7 +80,10 @@
 </head>
 <body>
   <h1>📲 Registro de Comandas</h1>
-  <button onclick="startScanner()">📷 Iniciar Leitura</button>
+
+  <button class="btn-primary" onclick="startScanner()">📷 Iniciar Leitura</button>
+  <button class="btn-warning" onclick="stopScanner()">❌ Fechar Câmera</button>
+
   <div id="reader"></div>
   <div id="output">Aguardando leitura...</div>
 
@@ -91,17 +101,18 @@
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxeakO64sqrobgBxMnjAmF-CCHf4-4o7k8tL3jWntNtNFXkIdz0gwGzEvSTYMNVoS8h7Q/exec";
     let scanner;
     let historicoComandas = new Set();
+    let scannerInstance;
 
     function startScanner() {
-      if (scanner) return;
+      if (scannerInstance) return;
 
-      scanner = new Html5Qrcode("reader");
-      scanner.start(
+      scannerInstance = new Html5Qrcode("reader");
+      scannerInstance.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: 250 },
         codigo => {
           const comanda = codigo.trim();
-          if (comandaJaRegistrada(comanda)) {
+          if (historicoComandas.has(comanda)) {
             document.getElementById("output").innerText = `⚠️ Comanda já registrada: ${comanda}`;
             return;
           }
@@ -113,8 +124,16 @@
       });
     }
 
-    function comandaJaRegistrada(codigo) {
-      return historicoComandas.has(codigo);
+    function stopScanner() {
+      if (scannerInstance) {
+        scannerInstance.stop().then(() => {
+          scannerInstance.clear();
+          scannerInstance = null;
+          document.getElementById("output").innerText = "📴 Câmera encerrada.";
+        }).catch(err => {
+          alert("Erro ao fechar câmera: " + err);
+        });
+      }
     }
 
     function registrarComanda(comanda) {
@@ -147,10 +166,13 @@
     function carregarHistorico() {
       const historico = JSON.parse(localStorage.getItem("comandas") || "[]");
       const tbody = document.getElementById("historico");
+
       historico.forEach(item => {
-        historicoComandas.add(item.comanda);
-        const linha = `<tr><td>${item.data}</td><td>${item.comanda}</td></tr>`;
-        tbody.insertAdjacentHTML('beforeend', linha);
+        if (!historicoComandas.has(item.comanda)) {
+          historicoComandas.add(item.comanda);
+          const linha = `<tr><td>${item.data}</td><td>${item.comanda}</td></tr>`;
+          tbody.insertAdjacentHTML('beforeend', linha);
+        }
       });
     }
 
