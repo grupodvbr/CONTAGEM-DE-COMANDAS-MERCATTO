@@ -2,159 +2,211 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Leitor de Comandas - QR Code e Código de Barras</title>
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <title>Registro de Comandas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f9f9f9;
+      background: #f0f0f0;
+      margin: 0;
+      padding: 0 10px;
       text-align: center;
-      padding: 20px;
     }
+
     h1 {
+      margin-top: 20px;
+      font-size: 1.5em;
       color: #333;
     }
+
     #reader {
-      width: 320px;
+      width: 100%;
+      max-width: 320px;
       margin: 20px auto;
     }
+
     #output {
+      margin: 15px 0;
       font-size: 1.2em;
       font-weight: bold;
-      margin: 20px 0;
     }
+
     button {
-      padding: 10px 20px;
+      padding: 12px 20px;
+      margin: 10px 5px;
       font-size: 16px;
-      background: #2196F3;
-      color: white;
       border: none;
-      border-radius: 5px;
+      border-radius: 8px;
       cursor: pointer;
     }
+
+    .btn-confirmar {
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    .btn-ler {
+      background-color: #2196F3;
+      color: white;
+    }
+
     table {
+      width: 100%;
+      max-width: 600px;
       margin: 30px auto;
       border-collapse: collapse;
-      width: 90%;
       background: #fff;
-      box-shadow: 0 0 5px rgba(0,0,0,0.2);
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+      border-radius: 6px;
+      overflow: hidden;
     }
+
     th, td {
       padding: 10px;
-      border: 1px solid #ccc;
+      border-bottom: 1px solid #ddd;
     }
+
     th {
-      background: #2196F3;
+      background-color: #2196F3;
       color: white;
+      text-align: center;
+    }
+
+    @media (max-width: 500px) {
+      h1 {
+        font-size: 1.2em;
+      }
+
+      button {
+        width: 100%;
+        margin: 5px 0;
+      }
+
+      table, th, td {
+        font-size: 0.9em;
+      }
     }
   </style>
 </head>
 <body>
-  <h1>📲 Leitor de Comandas</h1>
-  <button onclick="startScanner()">📷 Ler QR Code ou Código de Barras</button>
-  <div id="reader"></div>
-  <div id="output">Aguardando leitura...</div>
+  <h1>📲 Registro de Comandas</h1>
 
-  <h2>📋 Histórico de Comandas</h2>
-  <table id="historico">
+  <button class="btn-ler" onclick="startScanner()">📷 Ler Comanda</button>
+
+  <div id="reader"></div>
+  <div id="output">Nenhuma comanda lida ainda.</div>
+
+  <div id="botoes-confirmacao" style="display:none;">
+    <button class="btn-confirmar" onclick="confirmarComanda()">✅ Confirmar Registro</button>
+    <button class="btn-ler" onclick="startScanner()">🔄 Ler Outra</button>
+  </div>
+
+  <h2>📋 Histórico</h2>
+  <table>
     <thead>
-      <tr>
-        <th>Data</th>
-        <th>Comanda</th>
-      </tr>
+      <tr><th>Data</th><th>Comanda</th></tr>
     </thead>
-    <tbody></tbody>
+    <tbody id="historico"></tbody>
   </table>
 
   <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/SEU_ID_DO_SCRIPT/exec";
+    let scanner, ultimoCodigoLido = "";
     let historicoComandas = [];
 
-    window.onbeforeunload = function () {
-      return "Tem certeza que deseja sair? Os dados podem ser perdidos.";
-    };
-
-    let scannerInstance;
+    window.onbeforeunload = () => "Tem certeza que deseja sair?";
 
     function startScanner() {
       document.getElementById('output').innerText = 'Aguardando leitura...';
-      if (scannerInstance) {
-        scannerInstance.stop().then(() => {
-          initScanner();
-        });
+      document.getElementById('botoes-confirmacao').style.display = 'none';
+
+      if (scanner) {
+        scanner.stop().then(() => iniciarScanner());
       } else {
-        initScanner();
+        iniciarScanner();
       }
     }
 
-    function initScanner() {
-      scannerInstance = new Html5Qrcode("reader");
-      scannerInstance.start(
-        { facingMode: "environment" },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          formatsToSupport: [
-            Html5QrcodeSupportedFormats.QR_CODE,
-            Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.EAN_13,
-            Html5QrcodeSupportedFormats.EAN_8,
-            Html5QrcodeSupportedFormats.UPC_A,
-            Html5QrcodeSupportedFormats.UPC_E
-          ]
-        },
-        codigo => {
-          document.getElementById('output').innerText = `Código: ${codigo}`;
-          scannerInstance.stop();
-          if (comandaJaRegistrada(codigo)) {
-            alert("⚠️ Esta comanda já foi registrada!");
-          } else {
-            enviarComanda(codigo);
-          }
-        },
-        error => {}
-      ).catch(err => {
-        console.error("Erro ao iniciar scanner: ", err);
+    function iniciarScanner() {
+      scanner = new Html5Qrcode("reader");
+
+      Html5Qrcode.getCameras().then(cameras => {
+        if (cameras && cameras.length) {
+          scanner.start(
+            cameras[0].id,
+            {
+              fps: 10,
+              qrbox: 250,
+              formatsToSupport: [
+                Html5QrcodeSupportedFormats.QR_CODE,
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.EAN_13,
+                Html5QrcodeSupportedFormats.EAN_8
+              ]
+            },
+            codigo => {
+              ultimoCodigoLido = codigo.trim();
+              document.getElementById("output").innerText = `Comanda lida: ${ultimoCodigoLido}`;
+              scanner.stop();
+              document.getElementById("botoes-confirmacao").style.display = "block";
+            },
+            error => {}
+          );
+        } else {
+          alert("Nenhuma câmera encontrada.");
+        }
+      }).catch(err => {
+        alert("Erro ao acessar câmera: " + err);
       });
     }
 
-    function comandaJaRegistrada(codigo) {
-      return historicoComandas.includes(codigo.trim());
-    }
+    function confirmarComanda() {
+      if (comandaJaRegistrada(ultimoCodigoLido)) {
+        alert("⚠️ Esta comanda já foi registrada!");
+        return;
+      }
 
-    function enviarComanda(codigo) {
       fetch(SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comanda: codigo, timestamp: new Date().toISOString() })
+        body: JSON.stringify({ comanda: ultimoCodigoLido, timestamp: new Date().toISOString() })
       }).then(() => {
         alert("✅ Comanda registrada com sucesso!");
+        document.getElementById("output").innerText = "Nenhuma comanda lida ainda.";
+        document.getElementById("botoes-confirmacao").style.display = "none";
         carregarHistorico();
       }).catch(() => {
-        alert("❌ Erro ao enviar comanda.");
+        alert("❌ Erro ao registrar comanda.");
       });
+    }
+
+    function comandaJaRegistrada(codigo) {
+      return historicoComandas.includes(codigo);
     }
 
     function carregarHistorico() {
       fetch(SCRIPT_URL + '?listar=1')
-        .then(response => response.json())
+        .then(res => res.json())
         .then(data => {
-          const tbody = document.querySelector("#historico tbody");
+          const tbody = document.getElementById("historico");
           tbody.innerHTML = "";
           historicoComandas = [];
           data.reverse().slice(0, 100).forEach(item => {
             historicoComandas.push(item.comanda.trim());
-            const linha = document.createElement("tr");
-            linha.innerHTML = `<td>${item.data}</td><td>${item.comanda}</td>`;
-            tbody.appendChild(linha);
+            const linha = `<tr><td>${item.data}</td><td>${item.comanda}</td></tr>`;
+            tbody.innerHTML += linha;
           });
-        }).catch(error => {
-          console.error("Erro ao carregar histórico:", error);
         });
     }
 
-    window.onload = function () {
+    window.onload = () => {
+      if (!localStorage.getItem("camera_autorizada")) {
+        alert("🔐 Por favor, clique em 'Permitir' para autorizar o uso da câmera.\nDica: marque a opção para lembrar esta decisão.");
+        localStorage.setItem("camera_autorizada", "sim");
+      }
+
       carregarHistorico();
     };
   </script>
