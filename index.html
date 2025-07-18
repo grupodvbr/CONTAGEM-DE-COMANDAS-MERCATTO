@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Registro de  Comandas</title>
+  <title>Registro de Comandas</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
@@ -90,7 +90,7 @@
   <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxeakO64sqrobgBxMnjAmF-CCHf4-4o7k8tL3jWntNtNFXkIdz0gwGzEvSTYMNVoS8h7Q/exec";
     let scanner;
-    let historicoComandas = [];
+    let historicoComandas = new Set();
 
     function startScanner() {
       if (scanner) return;
@@ -102,7 +102,7 @@
         codigo => {
           const comanda = codigo.trim();
           if (comandaJaRegistrada(comanda)) {
-            document.getElementById("output").innerText = `⚠️ Comanda duplicada: ${comanda}`;
+            document.getElementById("output").innerText = `⚠️ Comanda já registrada: ${comanda}`;
             return;
           }
           registrarComanda(comanda);
@@ -114,7 +114,7 @@
     }
 
     function comandaJaRegistrada(codigo) {
-      return historicoComandas.includes(codigo);
+      return historicoComandas.has(codigo);
     }
 
     function registrarComanda(comanda) {
@@ -135,7 +135,7 @@
 
     function adicionarAoHistorico(timestamp, comanda) {
       const dataLocal = new Date(timestamp).toLocaleString('pt-BR');
-      historicoComandas.push(comanda);
+      historicoComandas.add(comanda);
       const linha = `<tr><td>${dataLocal}</td><td>${comanda}</td></tr>`;
       document.getElementById("historico").insertAdjacentHTML('afterbegin', linha);
 
@@ -148,7 +148,7 @@
       const historico = JSON.parse(localStorage.getItem("comandas") || "[]");
       const tbody = document.getElementById("historico");
       historico.forEach(item => {
-        historicoComandas.push(item.comanda);
+        historicoComandas.add(item.comanda);
         const linha = `<tr><td>${item.data}</td><td>${item.comanda}</td></tr>`;
         tbody.insertAdjacentHTML('beforeend', linha);
       });
@@ -157,7 +157,7 @@
     function limparHistorico() {
       if (confirm("Tem certeza que deseja apagar o histórico local?")) {
         localStorage.removeItem("comandas");
-        historicoComandas = [];
+        historicoComandas.clear();
         document.getElementById("historico").innerHTML = "";
         document.getElementById("output").innerText = "Histórico limpo.";
       }
