@@ -79,7 +79,7 @@
   </style>
 </head>
 <body>
-  <h1>📲 Registro de Comandas</h1>
+  <h1>Registro de Comandas</h1>
 
   <button class="btn-primary" onclick="startScanner()">📷 Iniciar Leitura</button>
   <button class="btn-warning" onclick="stopScanner()">❌ Fechar Câmera</button>
@@ -99,9 +99,9 @@
 
   <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxeakO64sqrobgBxMnjAmF-CCHf4-4o7k8tL3jWntNtNFXkIdz0gwGzEvSTYMNVoS8h7Q/exec";
-    let scanner;
-    let historicoComandas = new Set();
     let scannerInstance;
+    let historicoComandas = new Set();
+    let bloqueado = false;
 
     function startScanner() {
       if (scannerInstance) return;
@@ -112,10 +112,13 @@
         { fps: 10, qrbox: 250 },
         codigo => {
           const comanda = codigo.trim();
-          if (historicoComandas.has(comanda)) {
+
+          if (bloqueado || historicoComandas.has(comanda)) {
             document.getElementById("output").innerText = `⚠️ Comanda já registrada: ${comanda}`;
             return;
           }
+
+          bloqueado = true;
           registrarComanda(comanda);
         },
         error => {}
@@ -138,6 +141,7 @@
 
     function registrarComanda(comanda) {
       const timestamp = new Date().toISOString();
+      document.getElementById("output").innerText = `⏳ Registrando comanda: ${comanda}...`;
 
       fetch(SCRIPT_URL, {
         method: 'POST',
@@ -147,14 +151,17 @@
       }).then(() => {
         adicionarAoHistorico(timestamp, comanda);
         document.getElementById("output").innerText = `✅ Comanda registrada: ${comanda}`;
+        bloqueado = false;
       }).catch(() => {
         document.getElementById("output").innerText = `❌ Erro ao registrar: ${comanda}`;
+        bloqueado = false;
       });
     }
 
     function adicionarAoHistorico(timestamp, comanda) {
       const dataLocal = new Date(timestamp).toLocaleString('pt-BR');
       historicoComandas.add(comanda);
+
       const linha = `<tr><td>${dataLocal}</td><td>${comanda}</td></tr>`;
       document.getElementById("historico").insertAdjacentHTML('afterbegin', linha);
 
