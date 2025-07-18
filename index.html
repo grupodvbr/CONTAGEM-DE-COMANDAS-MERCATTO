@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Registro de  Comandas</title>
+  <title>Registro de Comandas</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
@@ -32,13 +32,17 @@
 
     button {
       padding: 12px 20px;
-      margin: 10px;
+      margin: 10px 5px;
       font-size: 16px;
       border: none;
       border-radius: 6px;
       background: #2196F3;
       color: white;
       cursor: pointer;
+    }
+
+    .btn-danger {
+      background-color: #f44336;
     }
 
     table {
@@ -81,6 +85,8 @@
     <tbody id="historico"></tbody>
   </table>
 
+  <button class="btn-danger" onclick="limparHistorico()">🗑️ Limpar Histórico</button>
+
   <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxeakO64sqrobgBxMnjAmF-CCHf4-4o7k8tL3jWntNtNFXkIdz0gwGzEvSTYMNVoS8h7Q/exec";
     let scanner;
@@ -91,7 +97,7 @@
 
       scanner = new Html5Qrcode("reader");
       scanner.start(
-        { facingMode: "environment" }, // <-- aqui está a câmera traseira
+        { facingMode: "environment" },
         { fps: 10, qrbox: 250 },
         codigo => {
           const comanda = codigo.trim();
@@ -146,6 +152,15 @@
         const linha = `<tr><td>${item.data}</td><td>${item.comanda}</td></tr>`;
         tbody.insertAdjacentHTML('beforeend', linha);
       });
+    }
+
+    function limparHistorico() {
+      if (confirm("Tem certeza que deseja apagar o histórico local?")) {
+        localStorage.removeItem("comandas");
+        historicoComandas = [];
+        document.getElementById("historico").innerHTML = "";
+        document.getElementById("output").innerText = "Histórico limpo.";
+      }
     }
 
     window.onload = () => {
