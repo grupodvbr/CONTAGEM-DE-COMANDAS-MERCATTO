@@ -90,25 +90,19 @@
       if (scanner) return;
 
       scanner = new Html5Qrcode("reader");
-      Html5Qrcode.getCameras().then(cameras => {
-        if (cameras.length) {
-          scanner.start(
-            cameras[0].id,
-            { fps: 10, qrbox: 250 },
-            codigo => {
-              const comanda = codigo.trim();
-              if (comandaJaRegistrada(comanda)) {
-                document.getElementById("output").innerText = `⚠️ Comanda duplicada: ${comanda}`;
-                return;
-              }
-              registrarComanda(comanda);
-            },
-            error => {}
-          );
-        } else {
-          alert("Nenhuma câmera encontrada.");
-        }
-      }).catch(err => {
+      scanner.start(
+        { facingMode: "environment" }, // <-- aqui está a câmera traseira
+        { fps: 10, qrbox: 250 },
+        codigo => {
+          const comanda = codigo.trim();
+          if (comandaJaRegistrada(comanda)) {
+            document.getElementById("output").innerText = `⚠️ Comanda duplicada: ${comanda}`;
+            return;
+          }
+          registrarComanda(comanda);
+        },
+        error => {}
+      ).catch(err => {
         alert("Erro ao acessar câmera: " + err);
       });
     }
@@ -120,7 +114,6 @@
     function registrarComanda(comanda) {
       const timestamp = new Date().toISOString();
 
-      // Envia para a planilha
       fetch(SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
@@ -140,7 +133,6 @@
       const linha = `<tr><td>${dataLocal}</td><td>${comanda}</td></tr>`;
       document.getElementById("historico").insertAdjacentHTML('afterbegin', linha);
 
-      // salvar no localStorage
       const historico = JSON.parse(localStorage.getItem("comandas") || "[]");
       historico.unshift({ data: dataLocal, comanda });
       localStorage.setItem("comandas", JSON.stringify(historico));
