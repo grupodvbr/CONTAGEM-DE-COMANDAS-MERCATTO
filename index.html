@@ -2,28 +2,21 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Registro de  Comandas</title>
+  <title>Registro de Comandas</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f0f0f0;
-      margin: 0;
-      padding: 0 10px;
+      background: #f2f2f2;
       text-align: center;
-    }
-
-    h1 {
-      margin-top: 20px;
-      font-size: 1.5em;
-      color: #333;
+      padding: 10px;
     }
 
     #reader {
       width: 100%;
       max-width: 320px;
-      margin: 20px auto;
+      margin: auto;
     }
 
     #output {
@@ -34,32 +27,35 @@
 
     button {
       padding: 12px 20px;
-      margin: 10px 5px;
+      margin: 5px;
       font-size: 16px;
       border: none;
-      border-radius: 8px;
+      border-radius: 6px;
       cursor: pointer;
     }
 
-    .btn-confirmar {
-      background-color: #4CAF50;
+    .btn-start {
+      background: #2196F3;
       color: white;
     }
 
-    .btn-ler {
-      background-color: #2196F3;
+    .btn-confirmar {
+      background: #4CAF50;
+      color: white;
+    }
+
+    .btn-rejeitar {
+      background: #f44336;
       color: white;
     }
 
     table {
-      width: 100%;
-      max-width: 600px;
-      margin: 30px auto;
+      margin: 20px auto;
       border-collapse: collapse;
+      width: 95%;
+      max-width: 600px;
       background: #fff;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
-      border-radius: 6px;
-      overflow: hidden;
+      box-shadow: 0 0 6px rgba(0,0,0,0.1);
     }
 
     th, td {
@@ -68,22 +64,17 @@
     }
 
     th {
-      background-color: #2196F3;
+      background: #2196F3;
       color: white;
-      text-align: center;
     }
 
     @media (max-width: 500px) {
-      h1 {
-        font-size: 1.2em;
-      }
-
       button {
         width: 100%;
         margin: 5px 0;
       }
 
-      table, th, td {
+      th, td {
         font-size: 0.9em;
       }
     }
@@ -92,17 +83,16 @@
 <body>
   <h1>📲 Registro de Comandas</h1>
 
-  <button class="btn-ler" onclick="startScanner()">📷 Ler Comanda</button>
-
+  <button class="btn-start" onclick="startScanner()">📷 Iniciar Leitura</button>
   <div id="reader"></div>
   <div id="output">Nenhuma comanda lida ainda.</div>
 
-  <div id="botoes-confirmacao" style="display:none;">
-    <button class="btn-confirmar" onclick="confirmarComanda()">✅ Confirmar Registro</button>
-    <button class="btn-ler" onclick="startScanner()">🔄 Ler Outra</button>
+  <div id="botoes" style="display: none;">
+    <button class="btn-confirmar" onclick="confirmarComanda()">✅ Confirmar</button>
+    <button class="btn-rejeitar" onclick="descartarComanda()">❌ Descartar</button>
   </div>
 
-  <h2>📋 Histórico</h2>
+  <h2>📋 Histórico Local</h2>
   <table>
     <thead>
       <tr><th>Data</th><th>Comanda</th></tr>
@@ -112,44 +102,26 @@
 
   <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxeakO64sqrobgBxMnjAmF-CCHf4-4o7k8tL3jWntNtNFXkIdz0gwGzEvSTYMNVoS8h7Q/exec";
-    let scanner, ultimoCodigoLido = "";
-    let historicoComandas = [];
-
-    window.onbeforeunload = () => "Tem certeza que deseja sair?";
+    let scanner;
+    let codigoAtual = "";
+    let bloqueado = false;
 
     function startScanner() {
-      document.getElementById('output').innerText = 'Aguardando leitura...';
-      document.getElementById('botoes-confirmacao').style.display = 'none';
+      if (scanner) return; // evitar múltiplas instâncias
 
-      if (scanner) {
-        scanner.stop().then(() => iniciarScanner());
-      } else {
-        iniciarScanner();
-      }
-    }
-
-    function iniciarScanner() {
       scanner = new Html5Qrcode("reader");
-
       Html5Qrcode.getCameras().then(cameras => {
-        if (cameras && cameras.length) {
+        if (cameras.length) {
           scanner.start(
             cameras[0].id,
-            {
-              fps: 10,
-              qrbox: 250,
-              formatsToSupport: [
-                Html5QrcodeSupportedFormats.QR_CODE,
-                Html5QrcodeSupportedFormats.CODE_128,
-                Html5QrcodeSupportedFormats.EAN_13,
-                Html5QrcodeSupportedFormats.EAN_8
-              ]
-            },
+            { fps: 10, qrbox: 250 },
             codigo => {
-              ultimoCodigoLido = codigo.trim();
-              document.getElementById("output").innerText = `Comanda lida: ${ultimoCodigoLido}`;
-              scanner.stop();
-              document.getElementById("botoes-confirmacao").style.display = "block";
+              if (!bloqueado) {
+                codigoAtual = codigo.trim();
+                document.getElementById("output").innerText = `Comanda lida: ${codigoAtual}`;
+                document.getElementById("botoes").style.display = "block";
+                bloqueado = true; // impede leitura dupla
+              }
             },
             error => {}
           );
@@ -157,56 +129,61 @@
           alert("Nenhuma câmera encontrada.");
         }
       }).catch(err => {
-        alert("Erro ao acessar câmera: " + err);
+        alert("Erro: " + err);
       });
     }
 
     function confirmarComanda() {
-      if (comandaJaRegistrada(ultimoCodigoLido)) {
-        alert("⚠️ Esta comanda já foi registrada!");
-        return;
-      }
+      const timestamp = new Date().toISOString();
+      const comanda = codigoAtual;
 
       fetch(SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comanda: ultimoCodigoLido, timestamp: new Date().toISOString() })
+        body: JSON.stringify({ comanda, timestamp })
       }).then(() => {
-        alert("✅ Comanda registrada com sucesso!");
-        document.getElementById("output").innerText = "Nenhuma comanda lida ainda.";
-        document.getElementById("botoes-confirmacao").style.display = "none";
-        carregarHistorico();
+        adicionarAoHistorico(timestamp, comanda);
+        resetarLeitura();
       }).catch(() => {
         alert("❌ Erro ao registrar comanda.");
+        resetarLeitura();
       });
     }
 
-    function comandaJaRegistrada(codigo) {
-      return historicoComandas.includes(codigo);
+    function descartarComanda() {
+      document.getElementById("output").innerText = "Leitura descartada.";
+      resetarLeitura();
+    }
+
+    function resetarLeitura() {
+      codigoAtual = "";
+      bloqueado = false;
+      document.getElementById("botoes").style.display = "none";
+    }
+
+    function adicionarAoHistorico(timestamp, comanda) {
+      const dataLocal = new Date(timestamp).toLocaleString('pt-BR');
+      const tbody = document.getElementById("historico");
+      const linha = `<tr><td>${dataLocal}</td><td>${comanda}</td></tr>`;
+      tbody.insertAdjacentHTML('afterbegin', linha);
+
+      // salvar no localStorage
+      const historico = JSON.parse(localStorage.getItem("comandas") || "[]");
+      historico.unshift({ data: dataLocal, comanda });
+      localStorage.setItem("comandas", JSON.stringify(historico));
     }
 
     function carregarHistorico() {
-      fetch(SCRIPT_URL + '?listar=1')
-        .then(res => res.json())
-        .then(data => {
-          const tbody = document.getElementById("historico");
-          tbody.innerHTML = "";
-          historicoComandas = [];
-          data.reverse().slice(0, 100).forEach(item => {
-            historicoComandas.push(item.comanda.trim());
-            const linha = `<tr><td>${item.data}</td><td>${item.comanda}</td></tr>`;
-            tbody.innerHTML += linha;
-          });
-        });
+      const historico = JSON.parse(localStorage.getItem("comandas") || "[]");
+      const tbody = document.getElementById("historico");
+      historico.forEach(item => {
+        const linha = `<tr><td>${item.data}</td><td>${item.comanda}</td></tr>`;
+        tbody.insertAdjacentHTML('beforeend', linha);
+      });
     }
 
     window.onload = () => {
-      if (!localStorage.getItem("camera_autorizada")) {
-        alert("🔐 Por favor, clique em 'Permitir' para autorizar o uso da câmera.\nDica: marque a opção para lembrar esta decisão.");
-        localStorage.setItem("camera_autorizada", "sim");
-      }
-
       carregarHistorico();
     };
   </script>
