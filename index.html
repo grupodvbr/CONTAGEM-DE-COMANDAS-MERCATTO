@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Registro de  Comandas</title>
+  <title>Registro de Comandas</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
@@ -11,6 +11,11 @@
       background: #f2f2f2;
       text-align: center;
       padding: 10px;
+    }
+
+    h1 {
+      font-size: 1.5em;
+      margin-top: 20px;
     }
 
     #reader {
@@ -27,26 +32,13 @@
 
     button {
       padding: 12px 20px;
-      margin: 5px;
+      margin: 10px;
       font-size: 16px;
       border: none;
       border-radius: 6px;
-      cursor: pointer;
-    }
-
-    .btn-start {
       background: #2196F3;
       color: white;
-    }
-
-    .btn-confirmar {
-      background: #4CAF50;
-      color: white;
-    }
-
-    .btn-rejeitar {
-      background: #f44336;
-      color: white;
+      cursor: pointer;
     }
 
     table {
@@ -71,28 +63,17 @@
     @media (max-width: 500px) {
       button {
         width: 100%;
-        margin: 5px 0;
-      }
-
-      th, td {
-        font-size: 0.9em;
       }
     }
   </style>
 </head>
 <body>
   <h1>📲 Registro de Comandas</h1>
-
-  <button class="btn-start" onclick="startScanner()">📷 Iniciar Leitura</button>
+  <button onclick="startScanner()">📷 Iniciar Leitura</button>
   <div id="reader"></div>
-  <div id="output">Nenhuma comanda lida ainda.</div>
+  <div id="output">Aguardando leitura...</div>
 
-  <div id="botoes" style="display: none;">
-    <button class="btn-confirmar" onclick="confirmarComanda()">✅ Confirmar</button>
-    <button class="btn-rejeitar" onclick="descartarComanda()">❌ Descartar</button>
-  </div>
-
-  <h2>📋 Histórico Local</h2>
+  <h2>📋 Histórico</h2>
   <table>
     <thead>
       <tr><th>Data</th><th>Comanda</th></tr>
@@ -103,11 +84,10 @@
   <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxeakO64sqrobgBxMnjAmF-CCHf4-4o7k8tL3jWntNtNFXkIdz0gwGzEvSTYMNVoS8h7Q/exec";
     let scanner;
-    let codigoAtual = "";
-    let bloqueado = false;
+    let historicoComandas = [];
 
     function startScanner() {
-      if (scanner) return; // evitar múltiplas instâncias
+      if (scanner) return;
 
       scanner = new Html5Qrcode("reader");
       Html5Qrcode.getCameras().then(cameras => {
@@ -116,12 +96,12 @@
             cameras[0].id,
             { fps: 10, qrbox: 250 },
             codigo => {
-              if (!bloqueado) {
-                codigoAtual = codigo.trim();
-                document.getElementById("output").innerText = `Comanda lida: ${codigoAtual}`;
-                document.getElementById("botoes").style.display = "block";
-                bloqueado = true; // impede leitura dupla
+              const comanda = codigo.trim();
+              if (comandaJaRegistrada(comanda)) {
+                document.getElementById("output").innerText = `⚠️ Comanda duplicada: ${comanda}`;
+                return;
               }
+              registrarComanda(comanda);
             },
             error => {}
           );
@@ -129,14 +109,18 @@
           alert("Nenhuma câmera encontrada.");
         }
       }).catch(err => {
-        alert("Erro: " + err);
+        alert("Erro ao acessar câmera: " + err);
       });
     }
 
-    function confirmarComanda() {
-      const timestamp = new Date().toISOString();
-      const comanda = codigoAtual;
+    function comandaJaRegistrada(codigo) {
+      return historicoComandas.includes(codigo);
+    }
 
+    function registrarComanda(comanda) {
+      const timestamp = new Date().toISOString();
+
+      // Envia para a planilha
       fetch(SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
@@ -144,29 +128,17 @@
         body: JSON.stringify({ comanda, timestamp })
       }).then(() => {
         adicionarAoHistorico(timestamp, comanda);
-        resetarLeitura();
+        document.getElementById("output").innerText = `✅ Comanda registrada: ${comanda}`;
       }).catch(() => {
-        alert("❌ Erro ao registrar comanda.");
-        resetarLeitura();
+        document.getElementById("output").innerText = `❌ Erro ao registrar: ${comanda}`;
       });
-    }
-
-    function descartarComanda() {
-      document.getElementById("output").innerText = "Leitura descartada.";
-      resetarLeitura();
-    }
-
-    function resetarLeitura() {
-      codigoAtual = "";
-      bloqueado = false;
-      document.getElementById("botoes").style.display = "none";
     }
 
     function adicionarAoHistorico(timestamp, comanda) {
       const dataLocal = new Date(timestamp).toLocaleString('pt-BR');
-      const tbody = document.getElementById("historico");
+      historicoComandas.push(comanda);
       const linha = `<tr><td>${dataLocal}</td><td>${comanda}</td></tr>`;
-      tbody.insertAdjacentHTML('afterbegin', linha);
+      document.getElementById("historico").insertAdjacentHTML('afterbegin', linha);
 
       // salvar no localStorage
       const historico = JSON.parse(localStorage.getItem("comandas") || "[]");
@@ -178,6 +150,7 @@
       const historico = JSON.parse(localStorage.getItem("comandas") || "[]");
       const tbody = document.getElementById("historico");
       historico.forEach(item => {
+        historicoComandas.push(item.comanda);
         const linha = `<tr><td>${item.data}</td><td>${item.comanda}</td></tr>`;
         tbody.insertAdjacentHTML('beforeend', linha);
       });
