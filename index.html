@@ -114,7 +114,7 @@
           const comanda = codigo.trim();
 
           if (bloqueado || historicoComandas.has(comanda)) {
-            document.getElementById("output").innerText = ⚠️ Comanda já registrada: ${comanda};
+            document.getElementById("output").innerText = `⚠️ Comanda já registrada: ${comanda}`;
             return;
           }
 
@@ -141,7 +141,7 @@
 
     function registrarComanda(comanda) {
       const timestamp = new Date().toISOString();
-      document.getElementById("output").innerText = ⏳ Registrando comanda: ${comanda}...;
+      document.getElementById("output").innerText = `⏳ Registrando comanda: ${comanda}...`;
 
       fetch(SCRIPT_URL, {
         method: 'POST',
@@ -150,10 +150,10 @@
         body: JSON.stringify({ comanda, timestamp })
       }).then(() => {
         adicionarAoHistorico(timestamp, comanda);
-        document.getElementById("output").innerText = ✅ Comanda registrada: ${comanda};
+        document.getElementById("output").innerText = `✅ Comanda registrada: ${comanda}`;
         bloqueado = false;
       }).catch(() => {
-        document.getElementById("output").innerText = ❌ Erro ao registrar: ${comanda};
+        document.getElementById("output").innerText = `❌ Erro ao registrar: ${comanda}`;
         bloqueado = false;
       });
     }
@@ -162,7 +162,7 @@
       const dataLocal = new Date(timestamp).toLocaleString('pt-BR');
       historicoComandas.add(comanda);
 
-      const linha = <tr><td>${dataLocal}</td><td>${comanda}</td></tr>;
+      const linha = `<tr><td>${dataLocal}</td><td>${comanda}</td></tr>`;
       document.getElementById("historico").insertAdjacentHTML('afterbegin', linha);
 
       const historico = JSON.parse(localStorage.getItem("comandas") || "[]");
@@ -177,7 +177,7 @@
       historico.forEach(item => {
         if (!historicoComandas.has(item.comanda)) {
           historicoComandas.add(item.comanda);
-          const linha = <tr><td>${item.data}</td><td>${item.comanda}</td></tr>;
+          const linha = `<tr><td>${item.data}</td><td>${item.comanda}</td></tr>`;
           tbody.insertAdjacentHTML('beforeend', linha);
         }
       });
