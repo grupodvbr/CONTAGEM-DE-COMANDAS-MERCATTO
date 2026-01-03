@@ -1,12 +1,14 @@
-const CACHE_NAME = "comandas-pwa-v1";
+const CACHE_NAME = "comandas-pwa-v2";
 
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
       return cache.addAll([
-        "./",
-        "./index.html",
-        "./manifest.json"
+        "/",
+        "/index.html",
+        "/manifest.json",
+        "/icons/icon-192.png",
+        "/icons/icon-512.png"
       ]);
     })
   );
