@@ -6,7 +6,6 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
-<!-- PWA -->
 <link rel="manifest" href="/CONTAGEM-DE-COMANDAS-MERCATTO/manifest.json">
 <link rel="apple-touch-icon" href="/CONTAGEM-DE-COMANDAS-MERCATTO/icons/icon-192.png">
 
@@ -28,6 +27,7 @@ document.addEventListener('dblclick', e => e.preventDefault());
   --primary:#2563eb;
   --success:#16a34a;
   --danger:#dc2626;
+  --warning:#f59e0b;
   --bg:#f8fafc;
   --text:#0f172a;
 }
@@ -72,7 +72,7 @@ button{
   margin-bottom:10px;
 }
 .primary{background:var(--primary)}
-.warning{background:#f59e0b}
+.warning{background:var(--warning)}
 .danger{background:var(--danger)}
 .success{background:var(--success)}
 
@@ -190,15 +190,19 @@ let idSelecionado=null;
 const COMANDA_4 = /^\d{4}$/;
 
 function atualizarBotoes(){
-  btnAbrir.style.display=cameraAtiva?"none":"block";
-  btnFechar.style.display=cameraAtiva?"block":"none";
-  reader.style.display=cameraAtiva?"block":"none";
+  btnAbrir.style.display = cameraAtiva ? "none" : "block";
+  btnFechar.style.display = cameraAtiva ? "block" : "none";
+  reader.style.display = cameraAtiva ? "block" : "none";
 }
 
 function startScanner(){
   if(cameraAtiva) return;
   scanner=new Html5Qrcode("reader");
-  scanner.start({facingMode:"environment"},{fps:20,qrbox:260},onScan);
+  scanner.start(
+    {facingMode:"environment"},
+    {fps:20,qrbox:260},
+    onScan
+  );
   cameraAtiva=true;
   atualizarBotoes();
 }
@@ -215,13 +219,22 @@ function stopScanner(){
 
 async function onScan(code){
   if(lock) return;
-  const codigo=code.trim();
+
+  const codigo = code.trim();
   if(!COMANDA_4.test(codigo)) return;
 
   lock=true;
 
-  const {data:existe}=await sb.from("comandas").select("id").eq("codigo",codigo).limit(1);
-  if(existe.length){ lock=false; return; }
+  const {data:existe} = await sb
+    .from("comandas")
+    .select("id")
+    .eq("codigo",codigo)
+    .limit(1);
+
+  if(existe.length){
+    lock=false;
+    return;
+  }
 
   await sb.from("comandas").insert({codigo});
   lock=false;
@@ -229,25 +242,25 @@ async function onScan(code){
 }
 
 async function carregar(){
-  const dataISO=dataFiltro.value;
-  const [y,m,d]=dataISO.split("-");
-  const dataBR=`${d}/${m}/${y}`;
+  const dataISO = dataFiltro.value;
+  const [y,m,d] = dataISO.split("-");
+  const dataBR = `${d}/${m}/${y}`;
 
-  const {data=[]}=await sb
+  const {data=[]} = await sb
     .from("comandas")
     .select("id,codigo,created_at")
     .order("created_at",{ascending:false});
 
-  const hoje=data.filter(r=>{
+  const hoje = data.filter(r=>{
     return COMANDA_4.test(r.codigo) &&
-      new Date(r.created_at).toLocaleDateString("pt-BR")===dataBR;
+      new Date(r.created_at).toLocaleDateString("pt-BR") === dataBR;
   });
 
-  qtdDia.innerText=hoje.length;
-  lista.innerHTML="";
+  qtdDia.innerText = hoje.length;
+  lista.innerHTML = "";
 
   hoje.forEach(r=>{
-    lista.innerHTML+=`
+    lista.innerHTML += `
       <tr ondblclick="abrirEditar('${r.id}','${r.codigo}')">
         <td>${dataBR}</td>
         <td>${r.codigo}</td>
@@ -264,7 +277,7 @@ function fecharModal(){
   modalEditar.style.display="none";
 }
 async function salvarEdicao(){
-  const novo=editarCodigo.value.trim();
+  const novo = editarCodigo.value.trim();
   if(!COMANDA_4.test(novo)) return;
   await sb.from("comandas").update({codigo:novo}).eq("id",idSelecionado);
   fecharModal();
@@ -276,8 +289,8 @@ async function excluirComanda(){
   carregar();
 }
 
-window.onload=()=>{
-  dataFiltro.value=new Date().toISOString().split("T")[0];
+window.onload = ()=>{
+  dataFiltro.value = new Date().toISOString().split("T")[0];
   dataFiltro.addEventListener("change",carregar);
   carregar();
 };
