@@ -298,7 +298,9 @@ async function carregar(){
   data.forEach(r=>{
     const d = new Date(r.created_at).toLocaleDateString("pt-BR");
     porData[d] = porData[d] || [];
-    porData[d].push(r.codigo);
+if (/^\d+$/.test(r.codigo)) {
+  porData[d].push(r.codigo);
+}
   });
 
   const [y,m,d] = dataISO.split("-");
