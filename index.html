@@ -12,8 +12,6 @@
 
 <meta name="theme-color" content="#2563eb">
 <meta name="apple-mobile-web-app-title" content="Comandas">
-
-
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -47,7 +45,6 @@ body{
   touch-action:manipulation;
 }
 
-/* DASHBOARD */
 .dashboard{
   max-width:820px;
   margin:auto;
@@ -111,7 +108,6 @@ button{
   margin-bottom:14px;
 }
 
-/* TABLE */
 table{
   width:100%;
   background:#fff;
@@ -131,7 +127,6 @@ td{
   text-align:center;
 }
 
-/* MODAL */
 .modal{
   position:fixed;
   inset:0;
@@ -199,7 +194,6 @@ td{
 </div>
 
 <div class="container">
-
   <button class="primary" id="btnAbrir" onclick="startScanner()">📷 Iniciar Leitura</button>
   <button class="warning" id="btnFechar" onclick="stopScanner()" style="display:none">❌ Fechar Câmera</button>
 
@@ -214,7 +208,6 @@ td{
   </table>
 </div>
 
-<!-- MODAL -->
 <div class="modal" id="modal">
   <div class="modal-content">
     <h3>📋 Comandas Faltantes</h3>
@@ -224,18 +217,19 @@ td{
 </div>
 
 <script>
-/* SUPABASE */
 const { createClient } = supabase;
 const sb = createClient(
   "https://dxkszikemntfusfyrzos.supabase.co",
   "sb_publishable_NNFvdfSXgOdGGVcSbphbjQ_brC3_9ed"
 );
 
-/* CAMERA STATE */
 let scanner = null;
 let cameraAtiva = false;
 let lock = false;
 let faltantesGlobais = [];
+
+/* REGRA: APENAS NÚMEROS */
+const SOMENTE_NUMEROS = /^\d+$/;
 
 function atualizarBotoesCamera(){
   document.getElementById("btnAbrir").style.display = cameraAtiva ? "none" : "block";
@@ -243,24 +237,20 @@ function atualizarBotoesCamera(){
   document.getElementById("reader").style.display = cameraAtiva ? "block" : "none";
 }
 
-/* SCANNER */
 function startScanner(){
   if(cameraAtiva) return;
-
   scanner = new Html5Qrcode("reader");
   scanner.start(
     { facingMode:"environment" },
     { fps:20, qrbox:260 },
     onScan
   );
-
   cameraAtiva = true;
   atualizarBotoesCamera();
 }
 
 function stopScanner(){
   if(!cameraAtiva) return;
-
   scanner.stop().then(()=>{
     scanner.clear();
     scanner = null;
@@ -271,10 +261,13 @@ function stopScanner(){
 
 async function onScan(code){
   if(lock) return;
-  lock = true;
 
   const codigo = code.trim();
-  document.getElementById("output").innerText = "Verificando…";
+
+  /* ⛔ IGNORA SE NÃO FOR 100% NUMÉRICO */
+  if(!SOMENTE_NUMEROS.test(codigo)) return;
+
+  lock = true;
 
   const { data:existe } = await sb
     .from("comandas")
@@ -283,7 +276,6 @@ async function onScan(code){
     .limit(1);
 
   if(existe.length){
-    document.getElementById("output").innerText = `⚠️ Já registrada: ${codigo}`;
     lock = false;
     return;
   }
@@ -294,14 +286,13 @@ async function onScan(code){
   carregar();
 }
 
-/* DADOS */
 async function carregar(){
   const dataISO = document.getElementById("dataFiltro").value;
 
-  const { data } = await sb
+  const { data=[] } = await sb
     .from("comandas")
     .select("codigo,created_at")
-    .order("created_at", { ascending:false }); // 🔥 MAIS RECENTE PRIMEIRO
+    .order("created_at",{ascending:false});
 
   let porData = {};
   data.forEach(r=>{
@@ -314,36 +305,7 @@ async function carregar(){
   const dataBR = `${d}/${m}/${y}`;
   const atual = porData[dataBR] || [];
 
-  const anteriores = Object.keys(porData)
-    .map(x=>{
-      const [d,m,y] = x.split("/");
-      return { br:x, iso:`${y}-${m}-${d}` };
-    })
-    .filter(x=>x.iso < dataISO)
-    .sort((a,b)=>a.iso.localeCompare(b.iso));
-
-  const ultima = anteriores.pop();
-  const anterior = ultima ? porData[ultima.br] : [];
-
-  faltantesGlobais = anterior.filter(c=>!atual.includes(c));
-
   document.getElementById("qtdDia").innerText = atual.length;
-  document.getElementById("qtdAnterior").innerText = anterior.length;
-
-  const status = document.getElementById("statusCard");
-  const texto = document.getElementById("statusTexto");
-  status.className = "card";
-
-  if(!anterior.length){
-    texto.innerText = "Sem base";
-    status.classList.add("info");
-  }else if(atual.length === anterior.length){
-    texto.innerText = "✔ OK";
-    status.classList.add("ok");
-  }else{
-    texto.innerText = `Faltam ${faltantesGlobais.length}`;
-    status.classList.add("alert");
-  }
 
   const tbody = document.getElementById("lista");
   tbody.innerHTML = "";
@@ -354,7 +316,6 @@ async function carregar(){
   });
 }
 
-/* MODAL */
 function abrirModal(){
   if(!faltantesGlobais.length) return;
   const lista = document.getElementById("faltantesLista");
@@ -369,14 +330,15 @@ function fecharModal(){
   document.getElementById("modal").style.display = "none";
 }
 
-/* INIT */
 window.onload = ()=>{
-  document.getElementById("dataFiltro").value = new Date().toISOString().split("T")[0];
+  document.getElementById("dataFiltro").value =
+    new Date().toISOString().split("T")[0];
   document.getElementById("dataFiltro").addEventListener("change", carregar);
   carregar();
   atualizarBotoesCamera();
 };
 </script>
+
 <script>
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register(
