@@ -90,6 +90,7 @@ button{
   border-radius:14px;
   font-weight:600;
   margin-bottom:14px;
+  text-align:center;
 }
 
 table{
@@ -106,7 +107,7 @@ td{
   cursor:pointer;
 }
 
-/* MODAIS PADRÃO */
+/* MODAIS */
 .modal{
   position:fixed;
   inset:0;
@@ -167,7 +168,6 @@ td{
 
 <div class="container">
 
-  <!-- BUSCA -->
   <input class="search" id="busca" placeholder="Buscar comanda (4 dígitos)">
 
   <button class="primary" id="btnAbrir" onclick="startScanner()">📷 Iniciar Leitura</button>
@@ -184,7 +184,7 @@ td{
   </table>
 </div>
 
-<!-- MODAL FALTANTES -->
+<!-- MODAIS -->
 <div class="modal" id="modalFaltantes">
   <div class="modal-content">
     <h3>📋 Comandas Faltantes</h3>
@@ -193,7 +193,6 @@ td{
   </div>
 </div>
 
-<!-- MODAL EDITAR -->
 <div class="modal" id="modalEditar">
   <div class="modal-content">
     <h3>✏️ Editar Comanda</h3>
@@ -204,7 +203,6 @@ td{
   </div>
 </div>
 
-<!-- MODAL HISTÓRICO -->
 <div class="modal" id="modalHistorico">
   <div class="modal-content">
     <h3>📅 Histórico da Comanda</h3>
@@ -261,13 +259,24 @@ function stopScanner(){
     scanner.clear(); scanner=null; cameraAtiva=false; atualizarBotoesCamera();
   });
 }
+
 async function onScan(code){
   if(lock) return;
   const c=code.trim();
   if(!REGEX.test(c)) return;
+
   lock=true;
+  output.innerText="Verificando…";
+
   const {data}=await sb.from("comandas").select("id").eq("codigo",c).limit(1);
-  if(!data.length) await sb.from("comandas").insert({codigo:c});
+  if(data.length){
+    output.innerText=`⚠️ Já registrada: ${c}`;
+    lock=false;
+    return;
+  }
+
+  await sb.from("comandas").insert({codigo:c});
+  output.innerText=`✅ Registrada: ${c}`;
   lock=false;
   carregar();
 }
