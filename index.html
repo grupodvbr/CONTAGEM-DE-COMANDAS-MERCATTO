@@ -1,93 +1,179 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Registro de Comandas</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://unpkg.com/html5-qrcode"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f2f2f2;
-      text-align: center;
-      padding: 10px;
-    }
+<meta charset="UTF-8">
+<title>Controle de Comandas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://unpkg.com/html5-qrcode"></script>
 
-    h1 {
-      font-size: 1.5em;
-      margin-top: 20px;
-    }
+<style>
+:root{
+  --primary:#1e88e5;
+  --success:#2e7d32;
+  --danger:#c62828;
+  --warning:#f9a825;
+  --bg:#f4f6f8;
+  --card:#ffffff;
+  --text:#263238;
+}
 
-    #reader {
-      width: 100%;
-      max-width: 320px;
-      margin: auto;
-    }
+*{box-sizing:border-box}
 
-    #output {
-      margin: 15px 0;
-      font-size: 1.2em;
-      font-weight: bold;
-    }
+body{
+  margin:0;
+  padding:14px;
+  font-family:Inter,Arial,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
 
-    button {
-      padding: 12px 20px;
-      margin: 10px 5px;
-      font-size: 16px;
-      border: none;
-      border-radius: 6px;
-      color: white;
-      cursor: pointer;
-    }
+/* ===== DASHBOARD ===== */
+.dashboard{
+  max-width:760px;
+  margin:auto;
+  background:linear-gradient(135deg,var(--primary),#42a5f5);
+  border-radius:16px;
+  padding:18px;
+  color:#fff;
+  box-shadow:0 6px 18px rgba(0,0,0,.18);
+}
 
-    .btn-primary {
-      background-color: #2196F3;
-    }
+.dashboard h1{
+  margin:0 0 14px;
+  font-size:1.5rem;
+}
 
-    .btn-danger {
-      background-color: #f44336;
-    }
+.dashboard-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:14px;
+}
 
-    .btn-warning {
-      background-color: #FF9800;
-    }
+.card{
+  background:rgba(255,255,255,.18);
+  border-radius:14px;
+  padding:14px;
+}
 
-    table {
-      margin: 20px auto;
-      border-collapse: collapse;
-      width: 95%;
-      max-width: 600px;
-      background: #fff;
-      box-shadow: 0 0 6px rgba(0,0,0,0.1);
-    }
+.card span{
+  font-size:.85rem;
+  opacity:.85;
+}
 
-    th, td {
-      padding: 10px;
-      border-bottom: 1px solid #ddd;
-    }
+.card strong{
+  display:block;
+  font-size:2rem;
+  margin-top:6px;
+}
 
-    th {
-      background: #2196F3;
-      color: white;
-    }
+.card input{
+  width:100%;
+  margin-top:6px;
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  font-size:1rem;
+}
 
-    @media (max-width: 500px) {
-      button {
-        width: 100%;
-      }
-    }
-  </style>
+.card.status-ok{background:rgba(46,125,50,.85)}
+.card.status-alert{background:rgba(198,40,40,.9)}
+.card.status-info{background:rgba(249,168,37,.9)}
+
+/* ===== CONTAINER ===== */
+.container{
+  max-width:760px;
+  margin:20px auto;
+}
+
+button{
+  width:100%;
+  padding:12px;
+  font-size:15px;
+  border:none;
+  border-radius:8px;
+  color:#fff;
+  cursor:pointer;
+  margin-bottom:10px;
+}
+
+.btn-primary{background:var(--primary)}
+.btn-warning{background:var(--warning)}
+.btn-danger{background:var(--danger)}
+
+#reader{
+  max-width:320px;
+  margin:14px auto;
+}
+
+#output{
+  background:var(--card);
+  padding:12px;
+  border-radius:8px;
+  font-weight:600;
+  margin-bottom:10px;
+}
+
+/* ===== TABLE ===== */
+table{
+  width:100%;
+  background:var(--card);
+  border-radius:10px;
+  overflow:hidden;
+  box-shadow:0 4px 10px rgba(0,0,0,.08);
+}
+
+th{
+  background:var(--primary);
+  color:#fff;
+  padding:10px;
+}
+
+td{
+  padding:10px;
+  border-bottom:1px solid #eee;
+  text-align:center;
+}
+</style>
 </head>
-<body>
-  <h1>Registro de Comandas</h1>
 
+<body>
+
+<!-- ===== DASHBOARD ===== -->
+<div class="dashboard">
+  <h1>📊 Conferência de Comandas</h1>
+
+  <div class="dashboard-grid">
+    <div class="card">
+      <span>Data selecionada</span>
+      <input type="date" id="filtroData">
+    </div>
+
+    <div class="card">
+      <span>Comandas do dia</span>
+      <strong id="totalDia">0</strong>
+    </div>
+
+    <div class="card">
+      <span>Última contagem</span>
+      <strong id="totalAnterior">0</strong>
+    </div>
+
+    <div class="card" id="statusCard">
+      <span>Status</span>
+      <strong id="statusTexto">—</strong>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCANNER ===== -->
+<div class="container">
   <button class="btn-primary" onclick="startScanner()">📷 Iniciar Leitura</button>
   <button class="btn-warning" onclick="stopScanner()">❌ Fechar Câmera</button>
 
   <div id="reader"></div>
   <div id="output">Aguardando leitura...</div>
 
-  <h2>📋 Histórico</h2>
+  <h3>📋 Histórico</h3>
   <table>
     <thead>
       <tr><th>Data</th><th>Comanda</th></tr>
@@ -96,105 +182,154 @@
   </table>
 
   <button class="btn-danger" onclick="limparHistorico()">🗑️ Limpar Histórico</button>
+</div>
 
-  <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxeakO64sqrobgBxMnjAmF-CCHf4-4o7k8tL3jWntNtNFXkIdz0gwGzEvSTYMNVoS8h7Q/exec";
-    let scannerInstance;
-    let historicoComandas = new Set();
-    let bloqueado = false;
+<script>
+const SCRIPT_URL="https://script.google.com/macros/s/AKfycbxeakO64sqrobgBxMnjAmF-CCHf4-4o7k8tL3jWntNtNFXkIdz0gwGzEvSTYMNVoS8h7Q/exec";
 
-    function startScanner() {
-      if (scannerInstance) return;
+let scannerInstance;
+let historicoComandas=new Set();
+let bloqueado=false;
 
-      scannerInstance = new Html5Qrcode("reader");
-      scannerInstance.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        codigo => {
-          const comanda = codigo.trim();
-
-          if (bloqueado || historicoComandas.has(comanda)) {
-            document.getElementById("output").innerText = `⚠️ Comanda já registrada: ${comanda}`;
-            return;
-          }
-
-          bloqueado = true;
-          registrarComanda(comanda);
-        },
-        error => {}
-      ).catch(err => {
-        alert("Erro ao acessar câmera: " + err);
-      });
-    }
-
-    function stopScanner() {
-      if (scannerInstance) {
-        scannerInstance.stop().then(() => {
-          scannerInstance.clear();
-          scannerInstance = null;
-          document.getElementById("output").innerText = "📴 Câmera encerrada.";
-        }).catch(err => {
-          alert("Erro ao fechar câmera: " + err);
-        });
+/* ===== SCANNER ===== */
+function startScanner(){
+  if(scannerInstance) return;
+  scannerInstance=new Html5Qrcode("reader");
+  scannerInstance.start(
+    {facingMode:"environment"},
+    {fps:10,qrbox:250},
+    codigo=>{
+      const comanda=codigo.trim();
+      if(bloqueado||historicoComandas.has(comanda)){
+        output(`⚠️ Já registrada: ${comanda}`);
+        return;
       }
+      bloqueado=true;
+      registrarComanda(comanda);
     }
+  );
+}
 
-    function registrarComanda(comanda) {
-      const timestamp = new Date().toISOString();
-      document.getElementById("output").innerText = `⏳ Registrando comanda: ${comanda}...`;
+function stopScanner(){
+  if(scannerInstance){
+    scannerInstance.stop().then(()=>{
+      scannerInstance.clear();
+      scannerInstance=null;
+      output("📴 Câmera encerrada.");
+    });
+  }
+}
 
-      fetch(SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comanda, timestamp })
-      }).then(() => {
-        adicionarAoHistorico(timestamp, comanda);
-        document.getElementById("output").innerText = `✅ Comanda registrada: ${comanda}`;
-        bloqueado = false;
-      }).catch(() => {
-        document.getElementById("output").innerText = `❌ Erro ao registrar: ${comanda}`;
-        bloqueado = false;
-      });
+function registrarComanda(comanda){
+  const ts=new Date().toISOString();
+  fetch(SCRIPT_URL,{
+    method:'POST',
+    mode:'no-cors',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({comanda,timestamp:ts})
+  }).then(()=>{
+    salvarLocal(ts,comanda);
+    output(`✅ Registrada: ${comanda}`);
+    bloqueado=false;
+  }).catch(()=>{
+    output("❌ Erro ao registrar");
+    bloqueado=false;
+  });
+}
+
+/* ===== LÓGICA DE CONFERÊNCIA ===== */
+function salvarLocal(ts,comanda){
+  const data=new Date(ts).toLocaleDateString('pt-BR');
+  historicoComandas.add(comanda);
+
+  const h=JSON.parse(localStorage.getItem("comandas")||"[]");
+  h.unshift({data,comanda});
+  localStorage.setItem("comandas",JSON.stringify(h));
+
+  aplicarFiltro();
+}
+
+function aplicarFiltro(){
+  const dataFiltro=document.getElementById("filtroData").value;
+  const tbody=document.getElementById("historico");
+  tbody.innerHTML="";
+
+  const historico=JSON.parse(localStorage.getItem("comandas")||"[]");
+
+  let totalDia=0;
+  let mapa={};
+
+  historico.forEach(item=>{
+    mapa[item.data]=(mapa[item.data]||0)+1;
+  });
+
+  historico.forEach(item=>{
+    const [d,m,y]=item.data.split('/');
+    const iso=`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+    if(iso===dataFiltro){
+      totalDia++;
+      tbody.insertAdjacentHTML("beforeend",
+        `<tr><td>${item.data}</td><td>${item.comanda}</td></tr>`
+      );
     }
+  });
 
-    function adicionarAoHistorico(timestamp, comanda) {
-      const dataLocal = new Date(timestamp).toLocaleString('pt-BR');
-      historicoComandas.add(comanda);
+  const datasOrdenadas=Object.keys(mapa)
+    .map(d=>{
+      const [dd,mm,yy]=d.split('/');
+      return {orig:d,iso:`${yy}-${mm}-${dd}`};
+    })
+    .sort((a,b)=>a.iso.localeCompare(b.iso));
 
-      const linha = `<tr><td>${dataLocal}</td><td>${comanda}</td></tr>`;
-      document.getElementById("historico").insertAdjacentHTML('afterbegin', linha);
+  const dataAtualISO=dataFiltro;
+  const anteriores=datasOrdenadas.filter(d=>d.iso<dataAtualISO);
+  const ultimaAnterior=anteriores.pop();
 
-      const historico = JSON.parse(localStorage.getItem("comandas") || "[]");
-      historico.unshift({ data: dataLocal, comanda });
-      localStorage.setItem("comandas", JSON.stringify(historico));
-    }
+  const totalAnterior=ultimaAnterior?mapa[ultimaAnterior.orig]:0;
 
-    function carregarHistorico() {
-      const historico = JSON.parse(localStorage.getItem("comandas") || "[]");
-      const tbody = document.getElementById("historico");
+  document.getElementById("totalDia").innerText=totalDia;
+  document.getElementById("totalAnterior").innerText=totalAnterior;
 
-      historico.forEach(item => {
-        if (!historicoComandas.has(item.comanda)) {
-          historicoComandas.add(item.comanda);
-          const linha = `<tr><td>${item.data}</td><td>${item.comanda}</td></tr>`;
-          tbody.insertAdjacentHTML('beforeend', linha);
-        }
-      });
-    }
+  const statusCard=document.getElementById("statusCard");
+  const statusTexto=document.getElementById("statusTexto");
 
-    function limparHistorico() {
-      if (confirm("Tem certeza que deseja apagar o histórico local?")) {
-        localStorage.removeItem("comandas");
-        historicoComandas.clear();
-        document.getElementById("historico").innerHTML = "";
-        document.getElementById("output").innerText = "Histórico limpo.";
-      }
-    }
+  statusCard.className="card";
 
-    window.onload = () => {
-      carregarHistorico();
-    };
-  </script>
+  if(totalAnterior===0){
+    statusTexto.innerText="Sem base";
+    statusCard.classList.add("status-info");
+  }else if(totalDia===totalAnterior){
+    statusTexto.innerText="✔ Conferência OK";
+    statusCard.classList.add("status-ok");
+  }else if(totalDia<totalAnterior){
+    statusTexto.innerText=`Faltam ${totalAnterior-totalDia}`;
+    statusCard.classList.add("status-alert");
+  }else{
+    statusTexto.innerText=`+${totalDia-totalAnterior} a mais`;
+    statusCard.classList.add("status-info");
+  }
+}
+
+function limparHistorico(){
+  if(confirm("Apagar histórico local?")){
+    localStorage.removeItem("comandas");
+    historicoComandas.clear();
+    aplicarFiltro();
+    output("Histórico limpo.");
+  }
+}
+
+function output(msg){
+  document.getElementById("output").innerText=msg;
+}
+
+/* ===== INIT ===== */
+window.onload=()=>{
+  const hoje=new Date().toISOString().split("T")[0];
+  document.getElementById("filtroData").value=hoje;
+  document.getElementById("filtroData").addEventListener("change",aplicarFiltro);
+  aplicarFiltro();
+};
+</script>
 </body>
 </html>
