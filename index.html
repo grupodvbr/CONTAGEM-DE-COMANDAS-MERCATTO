@@ -14,11 +14,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-<script>
-document.addEventListener('gesturestart', e => e.preventDefault());
-document.addEventListener('dblclick', e => e.preventDefault());
-</script>
-
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -78,6 +73,17 @@ button{
 .warning{background:var(--warning)}
 .danger{background:var(--danger)}
 .success{background:var(--success)}
+
+input.search{
+  width:100%;
+  padding:14px;
+  font-size:16px;
+  border-radius:14px;
+  border:1px solid #ddd;
+  margin-bottom:12px;
+  text-align:center;
+}
+
 #reader{
   max-width:340px;
   margin:16px auto;
@@ -108,7 +114,7 @@ td{
   cursor:pointer;
 }
 
-/* MODAIS */
+/* MODAL */
 .modal{
   position:fixed;
   inset:0;
@@ -124,13 +130,6 @@ td{
   max-width:420px;
   border-radius:16px;
   padding:18px;
-}
-.modal-content input{
-  width:100%;
-  padding:12px;
-  font-size:18px;
-  text-align:center;
-  margin-bottom:10px;
 }
 </style>
 </head>
@@ -160,6 +159,10 @@ td{
 </div>
 
 <div class="container">
+
+  <!-- 🔎 PESQUISA -->
+  <input class="search" id="pesquisa" placeholder="Pesquisar comanda (4 dígitos)" maxlength="4" oninput="pesquisarComanda()">
+
   <button class="primary" id="btnAbrir" onclick="startScanner()">📷 Iniciar Leitura</button>
   <button class="warning" id="btnFechar" onclick="stopScanner()" style="display:none">❌ Fechar Câmera</button>
 
@@ -174,23 +177,12 @@ td{
   </table>
 </div>
 
-<!-- MODAL FALTANTES -->
-<div class="modal" id="modalFaltantes">
+<!-- MODAL HISTÓRICO -->
+<div class="modal" id="modalHistorico">
   <div class="modal-content">
-    <h3>📋 Comandas Faltantes</h3>
-    <div id="faltantesLista"></div>
-    <button class="danger" onclick="fecharModalFaltantes()">Fechar</button>
-  </div>
-</div>
-
-<!-- MODAL EDITAR -->
-<div class="modal" id="modalEditar">
-  <div class="modal-content">
-    <h3>✏️ Editar Comanda</h3>
-    <input type="text" id="editarCodigo" maxlength="4">
-    <button class="success" onclick="salvarEdicao()">Salvar</button>
-    <button class="danger" onclick="excluirComanda()">Excluir</button>
-    <button onclick="fecharModalEditar()">Cancelar</button>
+    <h3>📅 Histórico da Comanda</h3>
+    <div id="historicoLista"></div>
+    <button class="danger" onclick="fecharHistorico()">Fechar</button>
   </div>
 </div>
 
@@ -201,148 +193,33 @@ const sb = createClient(
   "sb_publishable_NNFvdfSXgOdGGVcSbphbjQ_brC3_9ed"
 );
 
-let scanner=null;
-let cameraAtiva=false;
-let lock=false;
-let faltantesGlobais=[];
-let idSelecionado=null;
-
 const COMANDA_4=/^\d{4}$/;
 
-function atualizarBotoesCamera(){
-  btnAbrir.style.display=cameraAtiva?"none":"block";
-  btnFechar.style.display=cameraAtiva?"block":"none";
-  reader.style.display=cameraAtiva?"block":"none";
-}
-
-function startScanner(){
-  if(cameraAtiva) return;
-  scanner=new Html5Qrcode("reader");
-  scanner.start({facingMode:"environment"},{fps:20,qrbox:260},onScan);
-  cameraAtiva=true;
-  atualizarBotoesCamera();
-}
-
-function stopScanner(){
-  if(!cameraAtiva) return;
-  scanner.stop().then(()=>{
-    scanner.clear();
-    scanner=null;
-    cameraAtiva=false;
-    atualizarBotoesCamera();
-  });
-}
-
-async function onScan(code){
-  if(lock) return;
-  const codigo=code.trim();
-  if(!COMANDA_4.test(codigo)) return;
-  lock=true;
-
-  const {data:existe}=await sb.from("comandas").select("id").eq("codigo",codigo).limit(1);
-  if(existe.length){ lock=false; return; }
-
-  await sb.from("comandas").insert({codigo});
-  lock=false;
-  carregar();
-}
-
-async function carregar(){
-  const dataISO=dataFiltro.value;
-  const [y,m,d]=dataISO.split("-");
-  const dataBR=`${d}/${m}/${y}`;
+async function pesquisarComanda(){
+  const v=pesquisa.value.trim();
+  if(!COMANDA_4.test(v)) return;
 
   const {data=[]}=await sb
     .from("comandas")
-    .select("id,codigo,created_at")
+    .select("codigo,created_at")
+    .eq("codigo",v)
     .order("created_at",{ascending:false});
 
-  let porData={};
+  if(!data.length) return;
+
+  historicoLista.innerHTML="";
   data.forEach(r=>{
-    if(!COMANDA_4.test(r.codigo)) return;
-    const d=new Date(r.created_at).toLocaleDateString("pt-BR");
-    porData[d]=(porData[d]||[]).concat(r);
+    historicoLista.innerHTML+=`
+      <div>
+        ${new Date(r.created_at).toLocaleString("pt-BR")}
+      </div>`;
   });
 
-  const atual=porData[dataBR]||[];
-
-  const anteriores=Object.keys(porData)
-    .filter(x=>x!==dataBR)
-    .sort();
-
-  const ultima=anteriores.pop();
-  const anterior=ultima?porData[ultima]:[];
-
-  faltantesGlobais=anterior
-    .map(x=>x.codigo)
-    .filter(c=>!atual.map(a=>a.codigo).includes(c));
-
-  qtdDia.innerText=atual.length;
-  qtdAnterior.innerText=anterior.length;
-
-  statusTexto.innerText =
-    !anterior.length ? "Sem base" :
-    atual.length===anterior.length ? "✔ OK" :
-    `Faltam ${faltantesGlobais.length}`;
-
-  statusCard.className="card "+
-    (!anterior.length?"info":
-     atual.length===anterior.length?"ok":"alert");
-
-  lista.innerHTML="";
-  atual.forEach(r=>{
-    lista.innerHTML+=`
-      <tr ondblclick="abrirModalEditar('${r.id}','${r.codigo}')">
-        <td>${dataBR}</td>
-        <td>${r.codigo}</td>
-      </tr>`;
-  });
+  modalHistorico.style.display="flex";
 }
 
-function abrirModalFaltantes(){
-  if(!faltantesGlobais.length) return;
-  faltantesLista.innerHTML="";
-  faltantesGlobais.forEach(c=>{
-    faltantesLista.innerHTML+=`<div>${c}</div>`;
-  });
-  modalFaltantes.style.display="flex";
-}
-function fecharModalFaltantes(){ modalFaltantes.style.display="none"; }
-
-function abrirModalEditar(id,codigo){
-  idSelecionado=id;
-  editarCodigo.value=codigo;
-  modalEditar.style.display="flex";
-}
-function fecharModalEditar(){ modalEditar.style.display="none"; }
-
-async function salvarEdicao(){
-  const novo=editarCodigo.value.trim();
-  if(!COMANDA_4.test(novo)) return;
-  await sb.from("comandas").update({codigo:novo}).eq("id",idSelecionado);
-  fecharModalEditar();
-  carregar();
-}
-async function excluirComanda(){
-  await sb.from("comandas").delete().eq("id",idSelecionado);
-  fecharModalEditar();
-  carregar();
-}
-
-window.onload=()=>{
-  dataFiltro.value=new Date().toISOString().split("T")[0];
-  dataFiltro.addEventListener("change",carregar);
-  carregar();
-  atualizarBotoesCamera();
-};
-</script>
-
-<script>
-if("serviceWorker" in navigator){
-  navigator.serviceWorker.register(
-    "/CONTAGEM-DE-COMANDAS-MERCATTO/service-worker.js",
-    {scope:"/CONTAGEM-DE-COMANDAS-MERCATTO/"}
-  );
+function fecharHistorico(){
+  modalHistorico.style.display="none";
 }
 </script>
 
