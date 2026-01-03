@@ -6,9 +6,9 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
-<!-- BLOQUEIO DE ZOOM -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
 <script>
 document.addEventListener('gesturestart', e => e.preventDefault());
 document.addEventListener('dblclick', e => e.preventDefault());
@@ -39,11 +39,12 @@ body{
   touch-action:manipulation;
 }
 
+/* DASHBOARD */
 .dashboard{
   max-width:820px;
   margin:auto;
   padding:20px;
-  border-radius:16px;
+  border-radius:18px;
   background:linear-gradient(135deg,var(--primary),#3b82f6);
   color:#fff;
 }
@@ -58,12 +59,12 @@ body{
   background:rgba(255,255,255,.18);
   border-radius:14px;
   padding:14px;
+  cursor:pointer;
 }
 
 .card strong{
   display:block;
   font-size:2rem;
-  margin-top:6px;
 }
 
 .ok{background:rgba(22,163,74,.9)}
@@ -79,7 +80,7 @@ button{
   width:100%;
   padding:14px;
   border:none;
-  border-radius:12px;
+  border-radius:14px;
   font-size:15px;
   color:#fff;
   margin-bottom:10px;
@@ -96,11 +97,12 @@ button{
 #output{
   background:#fff;
   padding:14px;
-  border-radius:12px;
+  border-radius:14px;
   font-weight:600;
   margin-bottom:14px;
 }
 
+/* TABLE */
 table{
   width:100%;
   background:#fff;
@@ -118,6 +120,51 @@ td{
   padding:12px;
   border-bottom:1px solid #eee;
   text-align:center;
+}
+
+/* MODAL */
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.55);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:999;
+}
+
+.modal-content{
+  background:#fff;
+  width:90%;
+  max-width:420px;
+  border-radius:16px;
+  padding:18px;
+  max-height:80vh;
+  display:flex;
+  flex-direction:column;
+}
+
+.modal-content h3{
+  margin:0 0 10px;
+}
+
+.modal-list{
+  overflow-y:auto;
+  flex:1;
+  border:1px solid #eee;
+  border-radius:10px;
+}
+
+.modal-list div{
+  padding:10px;
+  border-bottom:1px solid #eee;
+  text-align:center;
+  font-weight:600;
+}
+
+.close-btn{
+  background:var(--danger);
+  margin-top:12px;
 }
 </style>
 </head>
@@ -139,7 +186,7 @@ td{
       <span>Última contagem</span>
       <strong id="qtdAnterior">0</strong>
     </div>
-    <div class="card info" id="statusCard">
+    <div class="card info" id="statusCard" onclick="abrirModal()">
       <span>Status</span>
       <strong id="statusTexto">—</strong>
     </div>
@@ -161,31 +208,32 @@ td{
   </table>
 </div>
 
+<!-- MODAL -->
+<div class="modal" id="modal">
+  <div class="modal-content">
+    <h3>📋 Comandas Faltantes</h3>
+    <div class="modal-list" id="faltantesLista"></div>
+    <button class="close-btn" onclick="fecharModal()">Fechar</button>
+  </div>
+</div>
+
 <script>
-/* ========= SUPABASE ========= */
+/* SUPABASE */
 const { createClient } = supabase;
 const sb = createClient(
   "https://dxkszikemntfusfyrzos.supabase.co",
   "sb_publishable_NNFvdfSXgOdGGVcSbphbjQ_brC3_9ed"
 );
 
-/* ========= SCANNER ========= */
+/* SCANNER */
 let scanner=null;
 let lock=false;
+let faltantesGlobais=[];
 
 function startScanner(){
   if(scanner) return;
-
-  scanner = new Html5Qrcode("reader");
-
-  scanner.start(
-    { facingMode: "environment" },
-    { fps: 20, qrbox: { width: 260, height: 260 } },
-    onScan,
-    err => {}
-  ).catch(err=>{
-    document.getElementById("output").innerText="❌ Erro câmera: "+err;
-  });
+  scanner=new Html5Qrcode("reader");
+  scanner.start({facingMode:"environment"},{fps:20,qrbox:260},onScan);
 }
 
 function stopScanner(){
@@ -200,50 +248,39 @@ function stopScanner(){
 async function onScan(code){
   if(lock) return;
   lock=true;
+  const codigo=code.trim();
+  document.getElementById("output").innerText="Verificando…";
 
-  const codigo = code.trim();
-  const output = document.getElementById("output");
-  output.innerText="⏳ Verificando…";
-
-  const { data:existe } = await sb
-    .from("comandas")
-    .select("id")
-    .eq("codigo", codigo)
-    .limit(1);
-
+  const {data:existe}=await sb.from("comandas").select("id").eq("codigo",codigo).limit(1);
   if(existe.length){
-    output.innerText=`⚠️ Já registrada: ${codigo}`;
+    document.getElementById("output").innerText=`⚠️ Já registrada: ${codigo}`;
     lock=false;
     return;
   }
 
-  await sb.from("comandas").insert({ codigo });
-  output.innerText=`✅ Registrada: ${codigo}`;
+  await sb.from("comandas").insert({codigo});
+  document.getElementById("output").innerText=`✅ Registrada: ${codigo}`;
   lock=false;
   carregar();
 }
 
-/* ========= DADOS ========= */
+/* DADOS */
 async function carregar(){
   const dataISO=document.getElementById("dataFiltro").value;
+  const {data}=await sb.from("comandas").select("codigo,created_at");
 
-  const { data } = await sb
-    .from("comandas")
-    .select("codigo,created_at");
-
-  let mapa={};
-
+  let porData={};
   data.forEach(r=>{
     const d=new Date(r.created_at).toLocaleDateString("pt-BR");
-    mapa[d]=(mapa[d]||0)+1;
+    porData[d]=porData[d]||[];
+    porData[d].push(r.codigo);
   });
 
   const [y,m,d]=dataISO.split("-");
   const dataBR=`${d}/${m}/${y}`;
+  const atual=porData[dataBR]||[];
 
-  const totalDia=mapa[dataBR]||0;
-
-  const anteriores=Object.keys(mapa)
+  const anteriores=Object.keys(porData)
     .map(x=>{
       const [d,m,y]=x.split("/");
       return {br:x,iso:`${y}-${m}-${d}`};
@@ -252,47 +289,59 @@ async function carregar(){
     .sort((a,b)=>a.iso.localeCompare(b.iso));
 
   const ultima=anteriores.pop();
-  const totalAnterior=ultima?mapa[ultima.br]:0;
+  const anterior=ultima?porData[ultima.br]:[];
 
-  document.getElementById("qtdDia").innerText=totalDia;
-  document.getElementById("qtdAnterior").innerText=totalAnterior;
+  faltantesGlobais=anterior.filter(c=>!atual.includes(c));
+
+  document.getElementById("qtdDia").innerText=atual.length;
+  document.getElementById("qtdAnterior").innerText=anterior.length;
 
   const status=document.getElementById("statusCard");
   const texto=document.getElementById("statusTexto");
-
   status.className="card";
 
-  if(!totalAnterior){
+  if(!anterior.length){
     texto.innerText="Sem base";
     status.classList.add("info");
-  }else if(totalDia===totalAnterior){
+  }else if(atual.length===anterior.length){
     texto.innerText="✔ OK";
     status.classList.add("ok");
-  }else if(totalDia<totalAnterior){
-    texto.innerText=`Faltam ${totalAnterior-totalDia}`;
-    status.classList.add("alert");
   }else{
-    texto.innerText=`+${totalDia-totalAnterior}`;
-    status.classList.add("info");
+    texto.innerText=`Faltam ${faltantesGlobais.length}`;
+    status.classList.add("alert");
   }
 
   const tbody=document.getElementById("lista");
   tbody.innerHTML="";
-  data.filter(r=>{
-    return new Date(r.created_at).toLocaleDateString("pt-BR")===dataBR;
-  }).forEach(r=>{
+  atual.forEach(c=>{
     tbody.insertAdjacentHTML("beforeend",
-      `<tr><td>${dataBR}</td><td>${r.codigo}</td></tr>`
+      `<tr><td>${dataBR}</td><td>${c}</td></tr>`
     );
   });
 }
 
-/* ========= INIT ========= */
+/* MODAL */
+function abrirModal(){
+  if(!faltantesGlobais.length) return;
+  const lista=document.getElementById("faltantesLista");
+  lista.innerHTML="";
+  faltantesGlobais.forEach(c=>{
+    lista.insertAdjacentHTML("beforeend",`<div>${c}</div>`);
+  });
+  document.getElementById("modal").style.display="flex";
+}
+
+function fecharModal(){
+  document.getElementById("modal").style.display="none";
+}
+
+/* INIT */
 window.onload=()=>{
   document.getElementById("dataFiltro").value=new Date().toISOString().split("T")[0];
   document.getElementById("dataFiltro").addEventListener("change",carregar);
   carregar();
 };
 </script>
+
 </body>
 </html>
