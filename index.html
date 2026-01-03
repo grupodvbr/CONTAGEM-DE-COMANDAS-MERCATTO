@@ -377,6 +377,14 @@ window.onload = ()=>{
   atualizarBotoesCamera();
 };
 </script>
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register(
+    "/CONTAGEM-DE-COMANDAS-MERCATTO/service-worker.js",
+    { scope: "/CONTAGEM-DE-COMANDAS-MERCATTO/" }
+  );
+}
+</script>
 
 </body>
 </html>
