@@ -6,6 +6,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
+<!-- PWA -->
 <link rel="manifest" href="/CONTAGEM-DE-COMANDAS-MERCATTO/manifest.json">
 <link rel="apple-touch-icon" href="/CONTAGEM-DE-COMANDAS-MERCATTO/icons/icon-192.png">
 
@@ -27,9 +28,7 @@ document.addEventListener('dblclick', e => e.preventDefault());
   --primary:#2563eb;
   --success:#16a34a;
   --danger:#dc2626;
-  --warning:#f59e0b;
   --bg:#f8fafc;
-  --card:#ffffff;
   --text:#0f172a;
 }
 *{box-sizing:border-box}
@@ -39,7 +38,6 @@ body{
   font-family:Inter,system-ui,Arial,sans-serif;
   background:var(--bg);
   color:var(--text);
-  touch-action:manipulation;
 }
 .dashboard{
   max-width:820px;
@@ -74,9 +72,10 @@ button{
   margin-bottom:10px;
 }
 .primary{background:var(--primary)}
-.warning{background:var(--warning)}
+.warning{background:#f59e0b}
 .danger{background:var(--danger)}
 .success{background:var(--success)}
+
 #reader{
   max-width:340px;
   margin:16px auto;
@@ -107,7 +106,7 @@ td{
   cursor:pointer;
 }
 
-/* MODAL EDITAR */
+/* MODAL */
 .modal{
   position:fixed;
   inset:0;
@@ -127,8 +126,8 @@ td{
 .modal-content input{
   width:100%;
   padding:12px;
-  text-align:center;
   font-size:18px;
+  text-align:center;
   margin-bottom:10px;
 }
 </style>
@@ -218,6 +217,7 @@ async function onScan(code){
   if(lock) return;
   const codigo=code.trim();
   if(!COMANDA_4.test(codigo)) return;
+
   lock=true;
 
   const {data:existe}=await sb.from("comandas").select("id").eq("codigo",codigo).limit(1);
@@ -230,21 +230,25 @@ async function onScan(code){
 
 async function carregar(){
   const dataISO=dataFiltro.value;
-  const {data=[]}=await sb.from("comandas").select("id,codigo,created_at").order("created_at",{ascending:false});
-
   const [y,m,d]=dataISO.split("-");
   const dataBR=`${d}/${m}/${y}`;
 
-  const atual=data.filter(r=>{
+  const {data=[]}=await sb
+    .from("comandas")
+    .select("id,codigo,created_at")
+    .order("created_at",{ascending:false});
+
+  const hoje=data.filter(r=>{
     return COMANDA_4.test(r.codigo) &&
       new Date(r.created_at).toLocaleDateString("pt-BR")===dataBR;
   });
 
-  qtdDia.innerText=atual.length;
+  qtdDia.innerText=hoje.length;
   lista.innerHTML="";
-  atual.forEach(r=>{
+
+  hoje.forEach(r=>{
     lista.innerHTML+=`
-      <tr onclick="abrirEditar('${r.id}','${r.codigo}')">
+      <tr ondblclick="abrirEditar('${r.id}','${r.codigo}')">
         <td>${dataBR}</td>
         <td>${r.codigo}</td>
       </tr>`;
