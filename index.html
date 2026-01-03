@@ -8,7 +8,7 @@
 
 <!-- PWA -->
 <link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
 
 <meta name="theme-color" content="#2563eb">
 <meta name="apple-mobile-web-app-title" content="Comandas">
@@ -296,7 +296,11 @@ async function onScan(code){
 /* DADOS */
 async function carregar(){
   const dataISO = document.getElementById("dataFiltro").value;
-  const { data } = await sb.from("comandas").select("codigo,created_at");
+
+  const { data } = await sb
+    .from("comandas")
+    .select("codigo,created_at")
+    .order("created_at", { ascending:false }); // 🔥 MAIS RECENTE PRIMEIRO
 
   let porData = {};
   data.forEach(r=>{
