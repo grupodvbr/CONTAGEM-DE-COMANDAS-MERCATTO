@@ -336,6 +336,7 @@ async function salvarEdicao(){
   fecharModalEditar(); carregar();
 }
 async function excluirComanda(){
+  if(!confirm("Tem certeza que deseja excluir esta comanda?")) return;
   await sb.from("comandas").delete().eq("id",idSelecionado);
   fecharModalEditar(); carregar();
 }
