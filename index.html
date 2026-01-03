@@ -2,16 +2,13 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-
 <title>Conferência de Comandas</title>
 
-<meta name="viewport"
-  content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
 <!-- BLOQUEIO DE ZOOM -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
 <script>
 document.addEventListener('gesturestart', e => e.preventDefault());
 document.addEventListener('dblclick', e => e.preventDefault());
@@ -29,7 +26,6 @@ document.addEventListener('dblclick', e => e.preventDefault());
   --bg:#f8fafc;
   --card:#ffffff;
   --text:#0f172a;
-  --radius:16px;
 }
 
 *{box-sizing:border-box}
@@ -37,26 +33,19 @@ document.addEventListener('dblclick', e => e.preventDefault());
 body{
   margin:0;
   padding:16px;
-  background:var(--bg);
   font-family:Inter,system-ui,Arial,sans-serif;
+  background:var(--bg);
   color:var(--text);
   touch-action:manipulation;
 }
 
-/* ===== DASHBOARD ===== */
 .dashboard{
   max-width:820px;
   margin:auto;
   padding:20px;
-  border-radius:var(--radius);
+  border-radius:16px;
   background:linear-gradient(135deg,var(--primary),#3b82f6);
   color:#fff;
-  box-shadow:0 12px 30px rgba(0,0,0,.18);
-}
-
-.dashboard h1{
-  margin:0 0 16px;
-  font-size:1.6rem;
 }
 
 .grid{
@@ -69,12 +58,6 @@ body{
   background:rgba(255,255,255,.18);
   border-radius:14px;
   padding:14px;
-  backdrop-filter:blur(6px);
-}
-
-.card span{
-  font-size:.85rem;
-  opacity:.85;
 }
 
 .card strong{
@@ -83,23 +66,13 @@ body{
   margin-top:6px;
 }
 
-.card input{
-  width:100%;
-  margin-top:6px;
-  padding:10px;
-  border:none;
-  border-radius:10px;
-  font-size:1rem;
-}
-
 .ok{background:rgba(22,163,74,.9)}
 .alert{background:rgba(220,38,38,.9)}
 .info{background:rgba(245,158,11,.9)}
 
-/* ===== CONTAINER ===== */
 .container{
   max-width:820px;
-  margin:22px auto;
+  margin:20px auto;
 }
 
 button{
@@ -109,34 +82,30 @@ button{
   border-radius:12px;
   font-size:15px;
   color:#fff;
-  cursor:pointer;
   margin-bottom:10px;
 }
 
 .primary{background:var(--primary)}
 .warning{background:var(--warning)}
-.danger{background:var(--danger)}
 
 #reader{
-  max-width:320px;
+  max-width:340px;
   margin:16px auto;
 }
 
 #output{
-  background:var(--card);
+  background:#fff;
   padding:14px;
   border-radius:12px;
   font-weight:600;
   margin-bottom:14px;
 }
 
-/* ===== TABLE ===== */
 table{
   width:100%;
-  background:var(--card);
+  background:#fff;
   border-radius:14px;
   overflow:hidden;
-  box-shadow:0 6px 18px rgba(0,0,0,.08);
 }
 
 th{
@@ -147,7 +116,7 @@ th{
 
 td{
   padding:12px;
-  border-bottom:1px solid #e5e7eb;
+  border-bottom:1px solid #eee;
   text-align:center;
 }
 </style>
@@ -156,7 +125,7 @@ td{
 <body>
 
 <div class="dashboard">
-  <h1>📊 Conferência de Comandas</h1>
+  <h2>📊 Conferência de Comandas</h2>
   <div class="grid">
     <div class="card">
       <span>Data</span>
@@ -182,7 +151,7 @@ td{
   <button class="warning" onclick="stopScanner()">❌ Fechar Câmera</button>
 
   <div id="reader"></div>
-  <div id="output">Aguardando leitura...</div>
+  <div id="output">Aguardando leitura…</div>
 
   <table>
     <thead>
@@ -193,70 +162,96 @@ td{
 </div>
 
 <script>
-/* ================= SUPABASE ================= */
-const supabase = supabase.createClient(
+/* ========= SUPABASE ========= */
+const { createClient } = supabase;
+const sb = createClient(
   "https://dxkszikemntfusfyrzos.supabase.co",
   "sb_publishable_NNFvdfSXgOdGGVcSbphbjQ_brC3_9ed"
 );
 
-/* ================= SCANNER ================= */
-let scanner;
-let bloqueado=false;
+/* ========= SCANNER ========= */
+let scanner=null;
+let lock=false;
 
 function startScanner(){
   if(scanner) return;
-  scanner=new Html5Qrcode("reader");
-  scanner.start({facingMode:"environment"},{fps:10,qrbox:250},onScan);
+
+  scanner = new Html5Qrcode("reader");
+
+  scanner.start(
+    { facingMode: "environment" },
+    { fps: 20, qrbox: { width: 260, height: 260 } },
+    onScan,
+    err => {}
+  ).catch(err=>{
+    document.getElementById("output").innerText="❌ Erro câmera: "+err;
+  });
 }
 
 function stopScanner(){
   if(scanner){
-    scanner.stop().then(()=>scanner=null);
+    scanner.stop().then(()=>{
+      scanner.clear();
+      scanner=null;
+    });
   }
 }
 
 async function onScan(code){
-  if(bloqueado) return;
-  bloqueado=true;
-  const comanda=code.trim();
-  document.getElementById("output").innerText="Registrando...";
+  if(lock) return;
+  lock=true;
 
-  await supabase.from("comandas")
-    .insert({codigo:comanda});
+  const codigo = code.trim();
+  const output = document.getElementById("output");
+  output.innerText="⏳ Verificando…";
 
-  document.getElementById("output").innerText=`✅ ${comanda}`;
-  bloqueado=false;
+  const { data:existe } = await sb
+    .from("comandas")
+    .select("id")
+    .eq("codigo", codigo)
+    .limit(1);
+
+  if(existe.length){
+    output.innerText=`⚠️ Já registrada: ${codigo}`;
+    lock=false;
+    return;
+  }
+
+  await sb.from("comandas").insert({ codigo });
+  output.innerText=`✅ Registrada: ${codigo}`;
+  lock=false;
   carregar();
 }
 
-/* ================= DADOS ================= */
+/* ========= DADOS ========= */
 async function carregar(){
-  const data=document.getElementById("dataFiltro").value;
+  const dataISO=document.getElementById("dataFiltro").value;
 
-  const {data:rows}=await supabase
+  const { data } = await sb
     .from("comandas")
     .select("codigo,created_at");
 
   let mapa={};
-  rows.forEach(r=>{
+
+  data.forEach(r=>{
     const d=new Date(r.created_at).toLocaleDateString("pt-BR");
     mapa[d]=(mapa[d]||0)+1;
   });
 
-  const [y,m,d]=data.split("-");
+  const [y,m,d]=dataISO.split("-");
   const dataBR=`${d}/${m}/${y}`;
 
   const totalDia=mapa[dataBR]||0;
 
-  const datas=Object.keys(mapa)
+  const anteriores=Object.keys(mapa)
     .map(x=>{
       const [d,m,y]=x.split("/");
       return {br:x,iso:`${y}-${m}-${d}`};
     })
-    .filter(x=>x.iso<data)
+    .filter(x=>x.iso<dataISO)
     .sort((a,b)=>a.iso.localeCompare(b.iso));
 
-  const ultima=datas.pop();
+  const ultima=anteriores.pop();
   const totalAnterior=ultima?mapa[ultima.br]:0;
 
   document.getElementById("qtdDia").innerText=totalDia;
@@ -283,9 +278,8 @@ async function carregar(){
 
   const tbody=document.getElementById("lista");
   tbody.innerHTML="";
-  rows.filter(r=>{
-    const d=new Date(r.created_at).toLocaleDateString("pt-BR");
-    return d===dataBR;
+  data.filter(r=>{
+    return new Date(r.created_at).toLocaleDateString("pt-BR")===dataBR;
   }).forEach(r=>{
     tbody.insertAdjacentHTML("beforeend",
       `<tr><td>${dataBR}</td><td>${r.codigo}</td></tr>`
@@ -293,7 +287,7 @@ async function carregar(){
   });
 }
 
-/* ================= INIT ================= */
+/* ========= INIT ========= */
 window.onload=()=>{
   document.getElementById("dataFiltro").value=new Date().toISOString().split("T")[0];
   document.getElementById("dataFiltro").addEventListener("change",carregar);
