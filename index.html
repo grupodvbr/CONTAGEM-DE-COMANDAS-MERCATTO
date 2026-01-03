@@ -108,30 +108,84 @@ td{
 }
 
 /* MODAIS */
+/* OVERLAY */
 .modal{
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,.55);
+  background:rgba(15,23,42,.65);
+  backdrop-filter:blur(3px);
   display:none;
   align-items:center;
   justify-content:center;
   z-index:999;
 }
+
+/* CARD */
 .modal-content{
-  background:#fff;
-  width:90%;
+  background:#ffffff;
+  width:92%;
   max-width:420px;
-  border-radius:16px;
-  padding:18px;
+  border-radius:18px;
+  padding:0;
   max-height:80vh;
-  overflow:auto;
+  display:flex;
+  flex-direction:column;
+  box-shadow:0 25px 60px rgba(0,0,0,.25);
+  overflow:hidden;
 }
+
+/* CABEÇALHO */
+.modal-content h3{
+  margin:0;
+  padding:16px;
+  background:linear-gradient(135deg,#2563eb,#3b82f6);
+  color:#fff;
+  font-size:16px;
+  text-align:center;
+}
+
+/* LISTA */
+.modal-list{
+  padding:8px 0;
+  overflow-y:auto;
+  flex:1;
+}
+
 .modal-list div{
-  padding:10px;
-  border-bottom:1px solid #eee;
+  padding:14px;
   text-align:center;
   font-weight:600;
+  font-size:15px;
+  color:#0f172a;
+  border-bottom:1px solid #f1f5f9;
 }
+
+/* ÚLTIMO ITEM SEM BORDA */
+.modal-list div:last-child{
+  border-bottom:none;
+}
+
+/* BOTÃO FECHAR */
+.modal-content button{
+  margin:12px;
+  padding:14px;
+  border-radius:14px;
+  border:none;
+  background:#dc2626;
+  color:#fff;
+  font-size:15px;
+  font-weight:600;
+}
+
+/* SCROLL ELEGANTE */
+.modal-list::-webkit-scrollbar{
+  width:6px;
+}
+.modal-list::-webkit-scrollbar-thumb{
+  background:#c7d2fe;
+  border-radius:6px;
+}
+
 .modal-content input{
   width:100%;
   padding:12px;
