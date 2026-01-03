@@ -2,48 +2,64 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Controle de Comandas</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Conferência de Comandas</title>
+
+<meta name="viewport"
+  content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<!-- BLOQUEIO DE ZOOM -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<script>
+document.addEventListener('gesturestart', e => e.preventDefault());
+document.addEventListener('dblclick', e => e.preventDefault());
+</script>
+
 <script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 :root{
-  --primary:#1e88e5;
-  --success:#2e7d32;
-  --danger:#c62828;
-  --warning:#f9a825;
-  --bg:#f4f6f8;
+  --primary:#2563eb;
+  --success:#16a34a;
+  --danger:#dc2626;
+  --warning:#f59e0b;
+  --bg:#f8fafc;
   --card:#ffffff;
-  --text:#263238;
+  --text:#0f172a;
+  --radius:16px;
 }
 
 *{box-sizing:border-box}
 
 body{
   margin:0;
-  padding:14px;
-  font-family:Inter,Arial,sans-serif;
+  padding:16px;
   background:var(--bg);
+  font-family:Inter,system-ui,Arial,sans-serif;
   color:var(--text);
+  touch-action:manipulation;
 }
 
 /* ===== DASHBOARD ===== */
 .dashboard{
-  max-width:760px;
+  max-width:820px;
   margin:auto;
-  background:linear-gradient(135deg,var(--primary),#42a5f5);
-  border-radius:16px;
-  padding:18px;
+  padding:20px;
+  border-radius:var(--radius);
+  background:linear-gradient(135deg,var(--primary),#3b82f6);
   color:#fff;
-  box-shadow:0 6px 18px rgba(0,0,0,.18);
+  box-shadow:0 12px 30px rgba(0,0,0,.18);
 }
 
 .dashboard h1{
-  margin:0 0 14px;
-  font-size:1.5rem;
+  margin:0 0 16px;
+  font-size:1.6rem;
 }
 
-.dashboard-grid{
+.grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
   gap:14px;
@@ -53,6 +69,7 @@ body{
   background:rgba(255,255,255,.18);
   border-radius:14px;
   padding:14px;
+  backdrop-filter:blur(6px);
 }
 
 .card span{
@@ -71,66 +88,66 @@ body{
   margin-top:6px;
   padding:10px;
   border:none;
-  border-radius:8px;
+  border-radius:10px;
   font-size:1rem;
 }
 
-.card.status-ok{background:rgba(46,125,50,.85)}
-.card.status-alert{background:rgba(198,40,40,.9)}
-.card.status-info{background:rgba(249,168,37,.9)}
+.ok{background:rgba(22,163,74,.9)}
+.alert{background:rgba(220,38,38,.9)}
+.info{background:rgba(245,158,11,.9)}
 
 /* ===== CONTAINER ===== */
 .container{
-  max-width:760px;
-  margin:20px auto;
+  max-width:820px;
+  margin:22px auto;
 }
 
 button{
   width:100%;
-  padding:12px;
-  font-size:15px;
+  padding:14px;
   border:none;
-  border-radius:8px;
+  border-radius:12px;
+  font-size:15px;
   color:#fff;
   cursor:pointer;
   margin-bottom:10px;
 }
 
-.btn-primary{background:var(--primary)}
-.btn-warning{background:var(--warning)}
-.btn-danger{background:var(--danger)}
+.primary{background:var(--primary)}
+.warning{background:var(--warning)}
+.danger{background:var(--danger)}
 
 #reader{
   max-width:320px;
-  margin:14px auto;
+  margin:16px auto;
 }
 
 #output{
   background:var(--card);
-  padding:12px;
-  border-radius:8px;
+  padding:14px;
+  border-radius:12px;
   font-weight:600;
-  margin-bottom:10px;
+  margin-bottom:14px;
 }
 
 /* ===== TABLE ===== */
 table{
   width:100%;
   background:var(--card);
-  border-radius:10px;
+  border-radius:14px;
   overflow:hidden;
-  box-shadow:0 4px 10px rgba(0,0,0,.08);
+  box-shadow:0 6px 18px rgba(0,0,0,.08);
 }
 
 th{
   background:var(--primary);
   color:#fff;
-  padding:10px;
+  padding:12px;
 }
 
 td{
-  padding:10px;
-  border-bottom:1px solid #eee;
+  padding:12px;
+  border-bottom:1px solid #e5e7eb;
   text-align:center;
 }
 </style>
@@ -138,197 +155,149 @@ td{
 
 <body>
 
-<!-- ===== DASHBOARD ===== -->
 <div class="dashboard">
   <h1>📊 Conferência de Comandas</h1>
-
-  <div class="dashboard-grid">
+  <div class="grid">
     <div class="card">
-      <span>Data selecionada</span>
-      <input type="date" id="filtroData">
+      <span>Data</span>
+      <input type="date" id="dataFiltro">
     </div>
-
     <div class="card">
       <span>Comandas do dia</span>
-      <strong id="totalDia">0</strong>
+      <strong id="qtdDia">0</strong>
     </div>
-
     <div class="card">
       <span>Última contagem</span>
-      <strong id="totalAnterior">0</strong>
+      <strong id="qtdAnterior">0</strong>
     </div>
-
-    <div class="card" id="statusCard">
+    <div class="card info" id="statusCard">
       <span>Status</span>
       <strong id="statusTexto">—</strong>
     </div>
   </div>
 </div>
 
-<!-- ===== SCANNER ===== -->
 <div class="container">
-  <button class="btn-primary" onclick="startScanner()">📷 Iniciar Leitura</button>
-  <button class="btn-warning" onclick="stopScanner()">❌ Fechar Câmera</button>
+  <button class="primary" onclick="startScanner()">📷 Iniciar Leitura</button>
+  <button class="warning" onclick="stopScanner()">❌ Fechar Câmera</button>
 
   <div id="reader"></div>
   <div id="output">Aguardando leitura...</div>
 
-  <h3>📋 Histórico</h3>
   <table>
     <thead>
       <tr><th>Data</th><th>Comanda</th></tr>
     </thead>
-    <tbody id="historico"></tbody>
+    <tbody id="lista"></tbody>
   </table>
-
-  <button class="btn-danger" onclick="limparHistorico()">🗑️ Limpar Histórico</button>
 </div>
 
 <script>
-const SCRIPT_URL="https://script.google.com/macros/s/AKfycbxeakO64sqrobgBxMnjAmF-CCHf4-4o7k8tL3jWntNtNFXkIdz0gwGzEvSTYMNVoS8h7Q/exec";
+/* ================= SUPABASE ================= */
+const supabase = supabase.createClient(
+  "https://dxkszikemntfusfyrzos.supabase.co",
+  "sb_publishable_NNFvdfSXgOdGGVcSbphbjQ_brC3_9ed"
+);
 
-let scannerInstance;
-let historicoComandas=new Set();
+/* ================= SCANNER ================= */
+let scanner;
 let bloqueado=false;
 
-/* ===== SCANNER ===== */
 function startScanner(){
-  if(scannerInstance) return;
-  scannerInstance=new Html5Qrcode("reader");
-  scannerInstance.start(
-    {facingMode:"environment"},
-    {fps:10,qrbox:250},
-    codigo=>{
-      const comanda=codigo.trim();
-      if(bloqueado||historicoComandas.has(comanda)){
-        output(`⚠️ Já registrada: ${comanda}`);
-        return;
-      }
-      bloqueado=true;
-      registrarComanda(comanda);
-    }
-  );
+  if(scanner) return;
+  scanner=new Html5Qrcode("reader");
+  scanner.start({facingMode:"environment"},{fps:10,qrbox:250},onScan);
 }
 
 function stopScanner(){
-  if(scannerInstance){
-    scannerInstance.stop().then(()=>{
-      scannerInstance.clear();
-      scannerInstance=null;
-      output("📴 Câmera encerrada.");
-    });
+  if(scanner){
+    scanner.stop().then(()=>scanner=null);
   }
 }
 
-function registrarComanda(comanda){
-  const ts=new Date().toISOString();
-  fetch(SCRIPT_URL,{
-    method:'POST',
-    mode:'no-cors',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({comanda,timestamp:ts})
-  }).then(()=>{
-    salvarLocal(ts,comanda);
-    output(`✅ Registrada: ${comanda}`);
-    bloqueado=false;
-  }).catch(()=>{
-    output("❌ Erro ao registrar");
-    bloqueado=false;
-  });
+async function onScan(code){
+  if(bloqueado) return;
+  bloqueado=true;
+  const comanda=code.trim();
+  document.getElementById("output").innerText="Registrando...";
+
+  await supabase.from("comandas")
+    .insert({codigo:comanda});
+
+  document.getElementById("output").innerText=`✅ ${comanda}`;
+  bloqueado=false;
+  carregar();
 }
 
-/* ===== LÓGICA DE CONFERÊNCIA ===== */
-function salvarLocal(ts,comanda){
-  const data=new Date(ts).toLocaleDateString('pt-BR');
-  historicoComandas.add(comanda);
+/* ================= DADOS ================= */
+async function carregar(){
+  const data=document.getElementById("dataFiltro").value;
 
-  const h=JSON.parse(localStorage.getItem("comandas")||"[]");
-  h.unshift({data,comanda});
-  localStorage.setItem("comandas",JSON.stringify(h));
+  const {data:rows}=await supabase
+    .from("comandas")
+    .select("codigo,created_at");
 
-  aplicarFiltro();
-}
-
-function aplicarFiltro(){
-  const dataFiltro=document.getElementById("filtroData").value;
-  const tbody=document.getElementById("historico");
-  tbody.innerHTML="";
-
-  const historico=JSON.parse(localStorage.getItem("comandas")||"[]");
-
-  let totalDia=0;
   let mapa={};
-
-  historico.forEach(item=>{
-    mapa[item.data]=(mapa[item.data]||0)+1;
+  rows.forEach(r=>{
+    const d=new Date(r.created_at).toLocaleDateString("pt-BR");
+    mapa[d]=(mapa[d]||0)+1;
   });
 
-  historico.forEach(item=>{
-    const [d,m,y]=item.data.split('/');
-    const iso=`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
-    if(iso===dataFiltro){
-      totalDia++;
-      tbody.insertAdjacentHTML("beforeend",
-        `<tr><td>${item.data}</td><td>${item.comanda}</td></tr>`
-      );
-    }
-  });
+  const [y,m,d]=data.split("-");
+  const dataBR=`${d}/${m}/${y}`;
 
-  const datasOrdenadas=Object.keys(mapa)
-    .map(d=>{
-      const [dd,mm,yy]=d.split('/');
-      return {orig:d,iso:`${yy}-${mm}-${dd}`};
+  const totalDia=mapa[dataBR]||0;
+
+  const datas=Object.keys(mapa)
+    .map(x=>{
+      const [d,m,y]=x.split("/");
+      return {br:x,iso:`${y}-${m}-${d}`};
     })
+    .filter(x=>x.iso<data)
     .sort((a,b)=>a.iso.localeCompare(b.iso));
 
-  const dataAtualISO=dataFiltro;
-  const anteriores=datasOrdenadas.filter(d=>d.iso<dataAtualISO);
-  const ultimaAnterior=anteriores.pop();
+  const ultima=datas.pop();
+  const totalAnterior=ultima?mapa[ultima.br]:0;
 
-  const totalAnterior=ultimaAnterior?mapa[ultimaAnterior.orig]:0;
+  document.getElementById("qtdDia").innerText=totalDia;
+  document.getElementById("qtdAnterior").innerText=totalAnterior;
 
-  document.getElementById("totalDia").innerText=totalDia;
-  document.getElementById("totalAnterior").innerText=totalAnterior;
+  const status=document.getElementById("statusCard");
+  const texto=document.getElementById("statusTexto");
 
-  const statusCard=document.getElementById("statusCard");
-  const statusTexto=document.getElementById("statusTexto");
+  status.className="card";
 
-  statusCard.className="card";
-
-  if(totalAnterior===0){
-    statusTexto.innerText="Sem base";
-    statusCard.classList.add("status-info");
+  if(!totalAnterior){
+    texto.innerText="Sem base";
+    status.classList.add("info");
   }else if(totalDia===totalAnterior){
-    statusTexto.innerText="✔ Conferência OK";
-    statusCard.classList.add("status-ok");
+    texto.innerText="✔ OK";
+    status.classList.add("ok");
   }else if(totalDia<totalAnterior){
-    statusTexto.innerText=`Faltam ${totalAnterior-totalDia}`;
-    statusCard.classList.add("status-alert");
+    texto.innerText=`Faltam ${totalAnterior-totalDia}`;
+    status.classList.add("alert");
   }else{
-    statusTexto.innerText=`+${totalDia-totalAnterior} a mais`;
-    statusCard.classList.add("status-info");
+    texto.innerText=`+${totalDia-totalAnterior}`;
+    status.classList.add("info");
   }
+
+  const tbody=document.getElementById("lista");
+  tbody.innerHTML="";
+  rows.filter(r=>{
+    const d=new Date(r.created_at).toLocaleDateString("pt-BR");
+    return d===dataBR;
+  }).forEach(r=>{
+    tbody.insertAdjacentHTML("beforeend",
+      `<tr><td>${dataBR}</td><td>${r.codigo}</td></tr>`
+    );
+  });
 }
 
-function limparHistorico(){
-  if(confirm("Apagar histórico local?")){
-    localStorage.removeItem("comandas");
-    historicoComandas.clear();
-    aplicarFiltro();
-    output("Histórico limpo.");
-  }
-}
-
-function output(msg){
-  document.getElementById("output").innerText=msg;
-}
-
-/* ===== INIT ===== */
+/* ================= INIT ================= */
 window.onload=()=>{
-  const hoje=new Date().toISOString().split("T")[0];
-  document.getElementById("filtroData").value=hoje;
-  document.getElementById("filtroData").addEventListener("change",aplicarFiltro);
-  aplicarFiltro();
+  document.getElementById("dataFiltro").value=new Date().toISOString().split("T")[0];
+  document.getElementById("dataFiltro").addEventListener("change",carregar);
+  carregar();
 };
 </script>
 </body>
