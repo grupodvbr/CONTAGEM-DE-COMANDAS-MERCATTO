@@ -24,6 +24,7 @@
   --danger:#dc2626;
   --warning:#f59e0b;
   --bg:#f8fafc;
+  --card:#ffffff;
   --text:#0f172a;
 }
 *{box-sizing:border-box}
@@ -56,10 +57,22 @@ body{
 .ok{background:rgba(22,163,74,.9)}
 .alert{background:rgba(220,38,38,.9)}
 .info{background:rgba(245,158,11,.9)}
+
 .container{
   max-width:820px;
   margin:20px auto;
 }
+
+input.search{
+  width:100%;
+  padding:14px;
+  border-radius:14px;
+  border:1px solid #ddd;
+  font-size:15px;
+  margin-bottom:10px;
+  text-align:center;
+}
+
 button{
   width:100%;
   padding:14px;
@@ -74,16 +87,6 @@ button{
 .danger{background:var(--danger)}
 .success{background:var(--success)}
 
-input.search{
-  width:100%;
-  padding:14px;
-  border-radius:14px;
-  border:1px solid #ddd;
-  margin-bottom:12px;
-  text-align:center;
-  font-size:16px;
-}
-
 #reader{
   max-width:340px;
   margin:16px auto;
@@ -96,6 +99,7 @@ input.search{
   font-weight:600;
   margin-bottom:14px;
 }
+
 table{
   width:100%;
   background:#fff;
@@ -114,7 +118,7 @@ td{
   cursor:pointer;
 }
 
-/* MODAIS */
+/* MODAIS (PADRÃO ANTIGO) */
 .modal{
   position:fixed;
   inset:0;
@@ -130,13 +134,14 @@ td{
   max-width:420px;
   border-radius:16px;
   padding:18px;
+  max-height:80vh;
+  overflow:auto;
 }
-.modal-content input{
-  width:100%;
-  padding:12px;
-  font-size:18px;
+.modal-list div{
+  padding:10px;
+  border-bottom:1px solid #eee;
   text-align:center;
-  margin-bottom:10px;
+  font-weight:600;
 }
 </style>
 </head>
@@ -167,8 +172,8 @@ td{
 
 <div class="container">
 
-  <!-- 🔎 PESQUISA -->
-  <input class="search" id="pesquisa" placeholder="Pesquisar comanda (4 dígitos)" maxlength="4">
+  <!-- 🔎 BUSCA -->
+  <input class="search" id="busca" placeholder="Buscar comanda (4 dígitos)">
 
   <button class="primary" id="btnAbrir" onclick="startScanner()">📷 Iniciar Leitura</button>
   <button class="warning" id="btnFechar" onclick="stopScanner()" style="display:none">❌ Fechar Câmera</button>
@@ -188,19 +193,8 @@ td{
 <div class="modal" id="modalFaltantes">
   <div class="modal-content">
     <h3>📋 Comandas Faltantes</h3>
-    <div id="faltantesLista"></div>
+    <div class="modal-list" id="faltantesLista"></div>
     <button class="danger" onclick="fecharModalFaltantes()">Fechar</button>
-  </div>
-</div>
-
-<!-- MODAL EDITAR -->
-<div class="modal" id="modalEditar">
-  <div class="modal-content">
-    <h3>✏️ Editar Comanda</h3>
-    <input type="text" id="editarCodigo" maxlength="4">
-    <button class="success" onclick="salvarEdicao()">Salvar</button>
-    <button class="danger" onclick="excluirComanda()">Excluir</button>
-    <button onclick="fecharModalEditar()">Cancelar</button>
   </div>
 </div>
 
@@ -208,7 +202,7 @@ td{
 <div class="modal" id="modalHistorico">
   <div class="modal-content">
     <h3>📅 Histórico da Comanda</h3>
-    <div id="historicoLista"></div>
+    <div class="modal-list" id="historicoLista"></div>
     <button class="danger" onclick="fecharHistorico()">Fechar</button>
   </div>
 </div>
@@ -220,17 +214,12 @@ const sb = createClient(
   "sb_publishable_NNFvdfSXgOdGGVcSbphbjQ_brC3_9ed"
 );
 
-let scanner=null;
-let cameraAtiva=false;
-let lock=false;
-let faltantesGlobais=[];
-let idSelecionado=null;
-
 const COMANDA_4=/^\d{4}$/;
+let scanner=null, cameraAtiva=false, lock=false, faltantesGlobais=[];
 
-/* ===== PESQUISA ===== */
-pesquisa.addEventListener("input", async ()=>{
-  const v=pesquisa.value.trim();
+/* ===== BUSCA AUTOMÁTICA ===== */
+busca.addEventListener("input", async ()=>{
+  const v=busca.value.trim();
   if(!COMANDA_4.test(v)) return;
 
   const {data=[]}=await sb
@@ -246,13 +235,10 @@ pesquisa.addEventListener("input", async ()=>{
     historicoLista.innerHTML+=`
       <div>${new Date(r.created_at).toLocaleString("pt-BR")}</div>`;
   });
-
   modalHistorico.style.display="flex";
 });
 
-function fecharHistorico(){
-  modalHistorico.style.display="none";
-}
+function fecharHistorico(){ modalHistorico.style.display="none"; }
 
 /* ===== SCANNER ===== */
 function atualizarBotoesCamera(){
@@ -270,10 +256,7 @@ function startScanner(){
 function stopScanner(){
   if(!cameraAtiva) return;
   scanner.stop().then(()=>{
-    scanner.clear();
-    scanner=null;
-    cameraAtiva=false;
-    atualizarBotoesCamera();
+    scanner.clear(); scanner=null; cameraAtiva=false; atualizarBotoesCamera();
   });
 }
 async function onScan(code){
@@ -281,11 +264,8 @@ async function onScan(code){
   const codigo=code.trim();
   if(!COMANDA_4.test(codigo)) return;
   lock=true;
-
   const {data:existe}=await sb.from("comandas").select("id").eq("codigo",codigo).limit(1);
-  if(existe.length){ lock=false; return; }
-
-  await sb.from("comandas").insert({codigo});
+  if(!existe.length) await sb.from("comandas").insert({codigo});
   lock=false;
   carregar();
 }
@@ -296,16 +276,13 @@ async function carregar(){
   const [y,m,d]=dataISO.split("-");
   const dataBR=`${d}/${m}/${y}`;
 
-  const {data=[]}=await sb
-    .from("comandas")
-    .select("id,codigo,created_at")
-    .order("created_at",{ascending:false});
+  const {data=[]}=await sb.from("comandas").select("codigo,created_at").order("created_at",{ascending:false});
 
   let porData={};
   data.forEach(r=>{
     if(!COMANDA_4.test(r.codigo)) return;
     const d=new Date(r.created_at).toLocaleDateString("pt-BR");
-    porData[d]=(porData[d]||[]).concat(r);
+    porData[d]=(porData[d]||[]).concat(r.codigo);
   });
 
   const atual=porData[dataBR]||[];
@@ -313,68 +290,38 @@ async function carregar(){
   const ultima=anteriores.pop();
   const anterior=ultima?porData[ultima]:[];
 
-  faltantesGlobais=anterior.map(x=>x.codigo)
-    .filter(c=>!atual.map(a=>a.codigo).includes(c));
+  faltantesGlobais=anterior.filter(c=>!atual.includes(c));
 
   qtdDia.innerText=atual.length;
   qtdAnterior.innerText=anterior.length;
 
-  statusTexto.innerText =
-    !anterior.length ? "Sem base" :
-    atual.length===anterior.length ? "✔ OK" :
+  statusTexto.innerText=
+    !anterior.length?"Sem base":
+    atual.length===anterior.length?"✔ OK":
     `Faltam ${faltantesGlobais.length}`;
 
-  statusCard.className="card "+
-    (!anterior.length?"info":
-     atual.length===anterior.length?"ok":"alert");
+  statusCard.className="card "+(!anterior.length?"info":atual.length===anterior.length?"ok":"alert");
 
   lista.innerHTML="";
-  atual.forEach(r=>{
-    lista.innerHTML+=`
-      <tr ondblclick="abrirModalEditar('${r.id}','${r.codigo}')">
-        <td>${dataBR}</td>
-        <td>${r.codigo}</td>
-      </tr>`;
+  atual.forEach(c=>{
+    lista.innerHTML+=`<tr><td>${dataBR}</td><td>${c}</td></tr>`;
   });
 }
 
-/* ===== MODAIS ===== */
+/* ===== FALTANTES ===== */
 function abrirModalFaltantes(){
   if(!faltantesGlobais.length) return;
   faltantesLista.innerHTML="";
-  faltantesGlobais.forEach(c=>{
-    faltantesLista.innerHTML+=`<div>${c}</div>`;
-  });
+  faltantesGlobais.forEach(c=>faltantesLista.innerHTML+=`<div>${c}</div>`);
   modalFaltantes.style.display="flex";
 }
 function fecharModalFaltantes(){ modalFaltantes.style.display="none"; }
-
-function abrirModalEditar(id,codigo){
-  idSelecionado=id;
-  editarCodigo.value=codigo;
-  modalEditar.style.display="flex";
-}
-function fecharModalEditar(){ modalEditar.style.display="none"; }
-
-async function salvarEdicao(){
-  const novo=editarCodigo.value.trim();
-  if(!COMANDA_4.test(novo)) return;
-  await sb.from("comandas").update({codigo:novo}).eq("id",idSelecionado);
-  fecharModalEditar();
-  carregar();
-}
-async function excluirComanda(){
-  await sb.from("comandas").delete().eq("id",idSelecionado);
-  fecharModalEditar();
-  carregar();
-}
 
 /* INIT */
 window.onload=()=>{
   dataFiltro.value=new Date().toISOString().split("T")[0];
   dataFiltro.addEventListener("change",carregar);
   carregar();
-  atualizarBotoesCamera();
 };
 </script>
 
