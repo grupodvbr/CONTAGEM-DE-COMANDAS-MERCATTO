@@ -358,7 +358,7 @@ async function onScan(code){
 
   // 🔍 verifica SOMENTE no mesmo dia
   const { data=[] } = await sb
-    .from("comandas_delicia")
+    .from("comandas")
     .select("id")
     .eq("codigo", c)
     .gte("created_at", inicioDia.toISOString())
@@ -372,7 +372,7 @@ async function onScan(code){
   }
 
   // ✅ registra normalmente
-  await sb.from("comandas_delicia").insert({ codigo: c });
+  await sb.from("comandas").insert({ codigo: c });
 
   output.innerText=`✅ Registrada: ${c}`;
   lock=false;
