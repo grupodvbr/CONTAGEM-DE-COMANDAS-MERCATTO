@@ -358,16 +358,18 @@ function ativarLeitor(){
   btnAbrir.style.display = "none";
   btnFechar.style.display = "none";
   reader.style.display = "none";
+  busca.style.display = "none";
 
   output.innerText = "⌨️ Leitor ativo — passe as comandas";
 }
 
-
 function ativarCamera(){
   modoLeitor = false;
+  busca.style.display = "block";
   output.innerText = "📷 Câmera ativa";
   startScanner();
 }
+
 
 async function onScan(code){
   if(lock) return;
