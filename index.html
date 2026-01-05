@@ -250,22 +250,24 @@ button:focus-visible {
 </div>
 
 <div class="container">
-
   <input class="search" id="busca" placeholder="Buscar comanda (4 dígitos)">
 
-  <button class="primary" id="btnAbrir" onclick="startScanner()">📷 Iniciar Leitura</button>
+<div class="grid" style="margin-bottom:10px">
+  <button class="primary" onclick="ativarLeitor()">⌨️ Usar Leitor</button>
+  <button class="primary" id="btnAbrir" onclick="ativarCamera()">📷 Usar Câmera</button>
   <button class="warning" id="btnFechar" onclick="stopScanner()" style="display:none">❌ Fechar Câmera</button>
-
-  <div id="reader"></div>
-  <div id="output">Aguardando leitura…</div>
-
-  <table>
-    <thead>
-      <tr><th>Data</th><th>Comanda</th></tr>
-    </thead>
-    <tbody id="lista"></tbody>
-  </table>
 </div>
+
+<div id="reader"></div>
+<div id="output">Aguardando leitura…</div>
+
+<table>
+  <thead>
+    <tr><th>Data</th><th>Comanda</th></tr>
+  </thead>
+  <tbody id="lista"></tbody>
+</table>
+
 
 <!-- MODAIS -->
 <div class="modal" id="modalFaltantes">
@@ -300,6 +302,9 @@ const sb = createClient(
   "https://dxkszikemntfusfyrzos.supabase.co",
   "sb_publishable_NNFvdfSXgOdGGVcSbphbjQ_brC3_9ed"
 );
+let modoLeitor = false;
+let bufferLeitor = "";
+let timeoutLeitor = null;
 
 const REGEX=/^\d{4}$/;
 let scanner=null, cameraAtiva=false, lock=false, faltantesGlobais=[], idSelecionado=null;
@@ -341,6 +346,27 @@ function stopScanner(){
   scanner.stop().then(()=>{
     scanner.clear(); scanner=null; cameraAtiva=false; atualizarBotoesCamera();
   });
+}
+
+  
+function ativarLeitor(){
+  if(cameraAtiva) stopScanner();
+
+  modoLeitor = true;
+  bufferLeitor = "";
+
+  btnAbrir.style.display = "none";
+  btnFechar.style.display = "none";
+  reader.style.display = "none";
+
+  output.innerText = "⌨️ Leitor ativo — passe as comandas";
+}
+
+
+function ativarCamera(){
+  modoLeitor = false;
+  output.innerText = "📷 Câmera ativa";
+  startScanner();
 }
 
 async function onScan(code){
@@ -454,6 +480,34 @@ window.onload=()=>{
   dataFiltro.addEventListener("change",carregar);
   carregar();
 };
+
+
+document.addEventListener("keydown", async (e) => {
+  if(!modoLeitor) return;
+
+  // Leitor envia ENTER no final
+  if(e.key === "Enter"){
+    const codigo = bufferLeitor;
+    bufferLeitor = "";
+
+    if(REGEX.test(codigo)){
+      await onScan(codigo);
+    } else {
+      output.innerText = "❌ Código inválido";
+    }
+    return;
+  }
+
+  // Aceita apenas números
+  if(e.key >= "0" && e.key <= "9"){
+    bufferLeitor += e.key;
+
+    // segurança: limpa se ficar parado
+    clearTimeout(timeoutLeitor);
+    timeoutLeitor = setTimeout(()=>bufferLeitor="",300);
+  }
+});
+
 </script>
 
 </body>
