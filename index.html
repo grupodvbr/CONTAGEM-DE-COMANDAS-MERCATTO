@@ -442,11 +442,13 @@ async function carregar(){
 
   lista.innerHTML="";
   atual.forEach(r=>{
-    lista.innerHTML+=`
-      <tr ondblclick="abrirModalEditar('${r.id}','${r.codigo}')">
-        <td>${br}</td>
-        <td>${r.codigo}</td>
-      </tr>`;
+
+    
+lista.innerHTML +=
+  '<tr ondblclick="abrirModalEditar(\''+r.id+'\',\''+r.codigo+'\')">' +
+    '<td>'+br+'</td>' +
+    '<td>'+r.codigo+'</td>' +
+  '</tr>';
   });
 }
 
